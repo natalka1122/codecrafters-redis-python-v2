@@ -52,6 +52,11 @@ class ExpiringDict:
         self._lists[key].lpush(values)
         return len(self._lists[key])
 
+    def llen(self, key: str) -> int:
+        if key not in self._lists:
+            return 0
+        return len(self._lists[key])
+
     def lrange(self, key: str, start_index: int, stop_index: int) -> list[str]:
         if key not in self._lists:
             return []

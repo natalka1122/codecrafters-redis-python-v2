@@ -8,6 +8,9 @@ class List:
     def lpush(self, values: list[str]) -> None:
         self._data = list(reversed(values)) + self._data
 
+    def llen(self) -> int:
+        return len(self._data)
+
     def __len__(self) -> int:
         return len(self._data)
 

@@ -13,6 +13,7 @@ from app.command_processor.handlers.set import handle_set
 from app.command_processor.handlers.rpush import handle_rpush
 from app.command_processor.handlers.lpush import handle_lpush
 from app.command_processor.handlers.lrange import handle_lrange
+from app.command_processor.handlers.llen import handle_llen
 
 from app.logging_config import get_logger
 
@@ -31,6 +32,7 @@ async def processor(data_resp: Array, redis_state: RedisState) -> RESPType[Any]:
         CommandType.RPUSH: handle_rpush,
         CommandType.LPUSH: handle_lpush,
         CommandType.LRANGE: handle_lrange,
+        CommandType.LLEN: handle_llen,
     }
 
     handler = handlers.get(command.cmd_type, handle_error)

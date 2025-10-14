@@ -18,3 +18,4 @@ class CommandType(Enum):
     RPUSH = "RPUSH"
     LPUSH = "LPUSH"
     LRANGE = "LRANGE"
+    LLEN = "LLEN"
