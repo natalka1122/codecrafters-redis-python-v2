@@ -50,17 +50,19 @@ class ExpiringDict:
         if key not in self._lists:
             return []
         the_list: List = self._lists[key]
-        if start_index > len(the_list):
+        len_the_list = len(the_list)
+        if start_index > len_the_list:
             return []
         if start_index < 0:
-            start_index = max(0, len(the_list) + start_index)
+            start_index = max(0, len_the_list + start_index)
 
-        if stop_index > len(the_list):
-            stop_index = len(the_list) - 1
+        if stop_index > len_the_list:
+            stop_index = len_the_list - 1
         elif stop_index < 0:
-            stop_index = max(0, len(the_list) + stop_index)
+            stop_index = max(0, len_the_list + stop_index)
         if start_index > stop_index:
             return []
+
         result = the_list[start_index : stop_index + 1]
         if isinstance(result, str):  # to pass type checks
             return [result]
