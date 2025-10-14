@@ -4,7 +4,7 @@ from app import const
 from app.connection.connection import Connection
 from app.exceptions import ReaderClosedError, WriterClosedError
 from app.logging_config import get_logger
-from app.processor import processor
+from app.command_processor.processor import processor
 from app.redis_state import RedisState
 
 logger = get_logger(__name__)

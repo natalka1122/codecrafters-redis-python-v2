@@ -1,6 +1,6 @@
 import time
 from typing import Optional
-
+from app.list import List
 from app.exceptions import ItemNotFoundError
 
 
@@ -8,6 +8,7 @@ class ExpiringDict:
     def __init__(self) -> None:
         self._items: dict[str, str] = dict()
         self._expiration_ms: dict[str, int] = dict()
+        self._lists: dict[str, List] = dict()
 
     def set(
         self,
@@ -38,3 +39,9 @@ class ExpiringDict:
             self._items.pop(key, None)
             raise ItemNotFoundError
         return self._items[key]
+
+    def rpush(self, key: str, values: list[str]) -> int:
+        if key not in self._lists:
+            self._lists[key] = List()
+        self._lists[key].rpush(values)
+        return len(self._lists[key])
