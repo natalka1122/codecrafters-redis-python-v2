@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "debugpy",
+      "request": "launch",
+      "name": "Launch Redis Server",
+      "program": "${workspaceFolder}/app/main.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "justMyCode": true
+    }
+  ]
+}
