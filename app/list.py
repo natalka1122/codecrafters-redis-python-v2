@@ -5,6 +5,9 @@ class List:
     def rpush(self, values: list[str]) -> None:
         self._data = self._data + values
 
+    def lpush(self, values: list[str]) -> None:
+        self._data = list(reversed(values)) + self._data
+
     def __len__(self) -> int:
         return len(self._data)
 

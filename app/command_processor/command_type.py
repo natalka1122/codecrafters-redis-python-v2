@@ -16,4 +16,5 @@ class CommandType(Enum):
     WAIT = "WAIT"
     ERROR = "ERROR"
     RPUSH = "RPUSH"
+    LPUSH = "LPUSH"
     LRANGE = "LRANGE"
