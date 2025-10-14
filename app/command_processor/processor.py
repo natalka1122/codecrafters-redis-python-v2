@@ -12,6 +12,7 @@ from app.command_processor.handlers.ping import handle_ping
 from app.command_processor.handlers.set import handle_set
 from app.command_processor.handlers.rpush import handle_rpush
 from app.command_processor.handlers.lrange import handle_lrange
+
 from app.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -20,7 +21,6 @@ logger = get_logger(__name__)
 async def processor(data_resp: Array, redis_state: RedisState) -> RESPType[Any]:
     """Process Redis commands and return appropriate responses."""
     command = Command(data_resp)
-
     # Direct mapping of command types to handlers
     handlers = {
         CommandType.PING: handle_ping,
