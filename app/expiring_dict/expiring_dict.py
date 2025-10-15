@@ -7,12 +7,10 @@ from app.expiring_dict.stream import Stream
 from app.resp.array import Array
 from app.resp.bulk_string import BulkString
 
-Item = str | int
-
 
 class ExpiringDict:
     def __init__(self) -> None:
-        self._items: dict[str, Item] = dict()
+        self._items: dict[str, str] = dict()
         self._expiration_ms: dict[str, int] = dict()
         self._lists: dict[str, List] = dict()
         self._streams: dict[str, Stream] = dict()
@@ -20,10 +18,7 @@ class ExpiringDict:
     def get_type(self, key: str) -> str:
         item = self._items.get(key)
         if item is not None:
-            if isinstance(item, str):
-                return "string"
-            else:
-                return "integer"
+            return "string"
         if self._lists.get(key):
             return "list"
         if key in self._streams:
@@ -33,10 +28,9 @@ class ExpiringDict:
     def set(
         self,
         key: str,
-        value_str: str,
+        value: str,
         expire_set_ms: Optional[int] = None,
     ) -> None:
-        value = int(value_str) if value_str.isdigit() else value_str
         if expire_set_ms is None:
             self._expiration_ms.pop(key, None)
             self._items[key] = value
@@ -47,7 +41,7 @@ class ExpiringDict:
             self._expiration_ms.pop(key, None)
             self._items.pop(key, None)
 
-    def get(self, key: str) -> Item:
+    def get(self, key: str) -> str:
         if key not in self._items:
             raise ItemNotFoundError
 
@@ -142,9 +136,10 @@ class ExpiringDict:
         value = self._items.get(key)
         if value is None:
             result = 1
-        elif isinstance(value, str):
-            raise NotIntegerError
+        elif value.isdigit():
+            result = int(value) + 1
         else:
-            result = value + 1
-        self._items[key] = result
+            raise NotIntegerError
+
+        self._items[key] = str(result)
         return result

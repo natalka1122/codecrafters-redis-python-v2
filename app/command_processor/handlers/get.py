@@ -5,7 +5,6 @@ from app.redis_state import RedisState
 from app.resp.base import RESPType
 from app.resp.bulk_string import BulkString, NullBulkString
 from app.resp.error import Error
-from app.resp.integer import Integer
 
 
 async def handle_get(args: list[str], redis_state: RedisState) -> RESPType[Any]:
@@ -16,7 +15,4 @@ async def handle_get(args: list[str], redis_state: RedisState) -> RESPType[Any]:
         response = redis_state.redis_variables.get(args[0])
     except ItemNotFoundError:
         return NullBulkString("")
-    if isinstance(response, str):
-        return BulkString(response)
-    else:
-        return Integer(response)
+    return BulkString(response)
