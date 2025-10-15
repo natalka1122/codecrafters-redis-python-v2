@@ -1,5 +1,6 @@
 from asyncio import StreamReader, StreamWriter
 
+from app.command_processor.command import Command
 from app.connection.async_reader import AsyncReaderHandler
 from app.connection.async_writer import AsyncWriterHandler
 from app.exceptions import ReaderClosedError, WriterClosedError
@@ -19,7 +20,8 @@ class Connection:  # noqa: WPS214
         self.peername = self._writer.peername
         self._reader = AsyncReaderHandler(reader, peername=self.peername)
         self._closed = False
-        self.is_transaction: bool = False
+        self._is_transaction: bool = False
+        self.transaction: list[Command] = []
         logger.debug(f"{self}: New connection")
 
     def __repr__(self) -> str:
@@ -28,6 +30,16 @@ class Connection:  # noqa: WPS214
     @property
     def is_closed(self) -> bool:
         return self._closed
+
+    @property
+    def is_transaction(self) -> bool:
+        return self._is_transaction
+
+    @is_transaction.setter
+    def is_transaction(self, value: bool) -> None:
+        if not value:
+            self.transaction = []
+        self._is_transaction = value
 
     async def read(self) -> Array:
         try:

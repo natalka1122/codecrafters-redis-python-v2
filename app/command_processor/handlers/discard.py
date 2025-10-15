@@ -1,5 +1,6 @@
 from typing import Any
 
+from app.command_processor.command import Command
 from app.connection.connection import Connection
 from app.logging_config import get_logger
 from app.redis_state import RedisState
@@ -11,11 +12,11 @@ logger = get_logger(__name__)
 
 
 async def handle_discard(
-    args: list[str], redis_state: RedisState, connection: Connection
-) -> tuple[bool, RESPType[Any]]:
+    command: Command, redis_state: RedisState, connection: Connection
+) -> RESPType[Any]:
     """Handle DISCARD command."""
-    logger.error(f"DISCARD: Not Implemented len(args) = {len(args)} args = {args}")
-    return False, SimpleString("OK")
+    connection.is_transaction = False
+    return SimpleString("OK")
 
 
 async def handle_discard_no_multy(

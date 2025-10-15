@@ -1,5 +1,6 @@
 from typing import Any
 
+from app.command_processor.command import Command
 from app.connection.connection import Connection
 from app.logging_config import get_logger
 from app.redis_state import RedisState
@@ -14,20 +15,20 @@ async def handle_multi(
     args: list[str], redis_state: RedisState, connection: Connection
 ) -> RESPType[Any]:
     """Handle MULTI command."""
-    logger.error(f"MULTI: Not Implemented len(args) = {len(args)} args = {args}")
+    connection.is_transaction = True
     return SimpleString("OK")
 
 
 async def handle_multi_inside_transaction(
-    args: list[str], redis_state: RedisState, connection: Connection
-) -> tuple[bool, RESPType[Any]]:
+    command: Command, redis_state: RedisState, connection: Connection
+) -> RESPType[Any]:
     """Handle MULTI command inside transaction"""
-    return True, Error("ERR MULTI inside MULTI")
+    return Error("ERR MULTI inside MULTI")
 
 
 async def handle_queued(
-    args: list[str], redis_state: RedisState, connection: Connection
-) -> tuple[bool, RESPType[Any]]:
+    command: Command, redis_state: RedisState, connection: Connection
+) -> RESPType[Any]:
     """Default handler inside transaction"""
-    logger.error(f"QUEUED: Not Implemented len(args) = {len(args)} args = {args}")
-    return True, SimpleString("QUEUED")
+    connection.transaction.append(command)
+    return SimpleString("QUEUED")
