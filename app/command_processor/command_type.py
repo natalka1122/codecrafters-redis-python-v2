@@ -26,3 +26,7 @@ class CommandType(Enum):
     XRANGE = "XRANGE"
     XREAD_STREAMS = "XREAD_STREAMS"
     XREAD_BLOCK = "XREAD_BLOCK"
+    INCR = "INCR"
+    MULTI = "MULTI"
+    EXEC = "EXEC"
+    DISCARD = "DISCARD"

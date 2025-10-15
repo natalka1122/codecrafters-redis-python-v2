@@ -29,3 +29,7 @@ class StreamWrongOrderError(Exception):
 
 class NoDataError(Exception):
     """NoDataError"""
+
+
+class NotIntegerError(Exception):
+    """NotIntegerError"""

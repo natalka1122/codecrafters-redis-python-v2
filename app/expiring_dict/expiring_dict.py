@@ -1,23 +1,29 @@
 import time
 from typing import Optional
 
-from app.exceptions import ItemNotFoundError
+from app.exceptions import ItemNotFoundError, NotIntegerError
 from app.expiring_dict.list import List
 from app.expiring_dict.stream import Stream
 from app.resp.array import Array
 from app.resp.bulk_string import BulkString
 
+Item = str | int
+
 
 class ExpiringDict:
     def __init__(self) -> None:
-        self._items: dict[str, str] = dict()
+        self._items: dict[str, Item] = dict()
         self._expiration_ms: dict[str, int] = dict()
         self._lists: dict[str, List] = dict()
         self._streams: dict[str, Stream] = dict()
 
     def get_type(self, key: str) -> str:
-        if key in self._items:
-            return "string"
+        item = self._items.get(key)
+        if item is not None:
+            if isinstance(item, str):
+                return "string"
+            else:
+                return "integer"
         if self._lists.get(key):
             return "list"
         if key in self._streams:
@@ -27,9 +33,10 @@ class ExpiringDict:
     def set(
         self,
         key: str,
-        value: str,
+        value_str: str,
         expire_set_ms: Optional[int] = None,
     ) -> None:
+        value = int(value_str) if value_str.isdigit() else value_str
         if expire_set_ms is None:
             self._expiration_ms.pop(key, None)
             self._items[key] = value
@@ -40,7 +47,7 @@ class ExpiringDict:
             self._expiration_ms.pop(key, None)
             self._items.pop(key, None)
 
-    def get(self, key: str) -> str:
+    def get(self, key: str) -> Item:
         if key not in self._items:
             raise ItemNotFoundError
 
@@ -130,3 +137,14 @@ class ExpiringDict:
             self._streams[stream_name] = Stream()
         result = await self._streams[stream_name].xread_block(timeout, start_id_str)
         return Array([BulkString(stream_name), result])
+
+    def incr(self, key: str) -> int:
+        value = self._items.get(key)
+        if value is None:
+            result = 1
+        elif isinstance(value, str):
+            raise NotIntegerError
+        else:
+            result = value + 1
+        self._items[key] = result
+        return result
