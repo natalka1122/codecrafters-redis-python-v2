@@ -106,8 +106,6 @@ class Stream:
         self._data[Key(timestamp, counter_int)] = Array(
             list(map(BulkString, parameters))
         )
-
-        logger.info(f"timestamp = {timestamp} counter = {counter_int}")
         return f"{timestamp}-{counter_int}"
 
     def xrange(self, start_id_str: str, end_id_str: str) -> Array:
@@ -131,11 +129,21 @@ class Stream:
                 end_index = bisect.bisect_left(
                     stamps_list, Key(end_ts, end_counter + 1)
                 )
-        logger.info(f"stamps_list = {stamps_list}")
-        logger.info(f"start_index = {start_index} end_index = {end_index}")
-        logger.info(str(stamps_list[start_index:end_index]))
         result: list[Array] = []
         for key in stamps_list[start_index:end_index]:
+            current_item: Array = Array([BulkString(str(key)), self._data[key]])
+            result.append(current_item)
+        return Array(result)
+
+    def xread_one_stream(self, start_id_str: str) -> Array:
+        start_ts, start_counter = str_to_tuple(start_id_str)
+        if start_counter is None:
+            return Array([])
+        start_id = Key(start_ts, start_counter)
+        stamps_list = self._data.stamps
+        start_index = bisect.bisect_right(stamps_list, start_id)
+        result: list[Array] = []
+        for key in stamps_list[start_index:]:
             current_item: Array = Array([BulkString(str(key)), self._data[key]])
             result.append(current_item)
         return Array(result)

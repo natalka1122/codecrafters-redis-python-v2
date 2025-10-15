@@ -5,6 +5,7 @@ from app.exceptions import ItemNotFoundError
 from app.expiring_dict.list import List
 from app.expiring_dict.stream import Stream
 from app.resp.array import Array
+from app.resp.bulk_string import BulkString
 
 
 class ExpiringDict:
@@ -110,3 +111,13 @@ class ExpiringDict:
         if stream_name not in self._streams:
             return Array([])
         return self._streams[stream_name].xrange(start_id, end_id)
+
+    def xread_one_stream(self, stream_name: str, start_id: str) -> Array:
+        if stream_name not in self._streams:
+            return Array([])
+        return Array(
+            [
+                BulkString(stream_name),
+                self._streams[stream_name].xread_one_stream(start_id),
+            ]
+        )
