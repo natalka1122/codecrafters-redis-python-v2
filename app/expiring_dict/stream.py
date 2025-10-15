@@ -1,10 +1,11 @@
+import asyncio
 import bisect
 import re
 import time
 from collections import OrderedDict
 from typing import Optional
 
-from app.exceptions import StreamWrongIdError, StreamWrongOrderError
+from app.exceptions import NoDataError, StreamWrongIdError, StreamWrongOrderError
 from app.logging_config import get_logger
 from app.resp.array import Array
 from app.resp.bulk_string import BulkString
@@ -62,6 +63,11 @@ class Key:
             raise NotImplementedError
         return self.tuple < other.tuple
 
+    def __le__(self, other: object) -> bool:
+        if not isinstance(other, Key):
+            raise NotImplementedError
+        return self.tuple <= other.tuple
+
     def __gt__(self, other: object) -> bool:
         if not isinstance(other, Key):
             raise NotImplementedError
@@ -77,6 +83,12 @@ class Stamped:
     def stamps(self) -> list[Key]:
         return list(self._data.keys())
 
+    @property
+    def last_key(self) -> Key:
+        if len(self._data) == 0:
+            return Key(0, 0)
+        return list(self._data.keys())[-1]
+
     def __getitem__(self, key: Key) -> Item:
         return self._data[key]
 
@@ -86,12 +98,16 @@ class Stamped:
         self._data[key] = value
         self.next_stamp = Key(key.timestamp, key.counter + 1)
 
+    def __len__(self) -> int:
+        return len(self._data)
+
 
 class Stream:
     def __init__(self) -> None:
         self._data: Stamped = Stamped()
+        self._condition: asyncio.Condition = asyncio.Condition()
 
-    def xadd(self, key_str: str, parameters: list[str]) -> Optional[str]:
+    async def xadd(self, key_str: str, parameters: list[str]) -> Optional[str]:
         if key_str == "0-0":
             raise StreamWrongIdError
         timestamp, counter = str_to_tuple(key_str)
@@ -106,6 +122,8 @@ class Stream:
         self._data[Key(timestamp, counter_int)] = Array(
             list(map(BulkString, parameters))
         )
+        async with self._condition:
+            self._condition.notify_all()
         return f"{timestamp}-{counter_int}"
 
     def xrange(self, start_id_str: str, end_id_str: str) -> Array:
@@ -147,3 +165,31 @@ class Stream:
             current_item: Array = Array([BulkString(str(key)), self._data[key]])
             result.append(current_item)
         return Array(result)
+
+    async def xread_block(self, timeout: int, start_id_str: str) -> Array:
+        start_ts, start_counter = str_to_tuple(start_id_str)
+        if start_counter is None:
+            raise NotImplementedError
+        start_id = Key(start_ts, start_counter)
+
+        if len(self._data) == 0 or start_id >= self._data.last_key:
+            async with self._condition:
+                try:
+                    await asyncio.wait_for(
+                        self._condition.wait_for(
+                            lambda: start_id < self._data.last_key
+                        ),
+                        timeout=timeout / 1000 if timeout > 0 else None,
+                    )
+                except asyncio.TimeoutError:
+                    raise NoDataError
+
+        stamps_list = self._data.stamps
+        start_index = bisect.bisect_right(stamps_list, start_id)
+        current_item: Array = Array(
+            [
+                BulkString(str(stamps_list[start_index])),
+                self._data[stamps_list[start_index]],
+            ]
+        )
+        return Array([current_item])

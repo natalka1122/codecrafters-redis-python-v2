@@ -101,11 +101,12 @@ class ExpiringDict:
             self._lists[key] = List()
         return await self._lists[key].blpop(timeout)
 
-    def xadd(self, stream_name: str, key: str, parameters: list[str]) -> Optional[str]:
+    async def xadd(
+        self, stream_name: str, key: str, parameters: list[str]
+    ) -> Optional[str]:
         if stream_name not in self._streams:
             self._streams[stream_name] = Stream()
-        key_resolved = self._streams[stream_name].xadd(key, parameters)
-        return key_resolved
+        return await self._streams[stream_name].xadd(key, parameters)
 
     def xrange(self, stream_name: str, start_id: str, end_id: str) -> Array:
         if stream_name not in self._streams:
@@ -121,3 +122,11 @@ class ExpiringDict:
                 self._streams[stream_name].xread_one_stream(start_id),
             ]
         )
+
+    async def xread_block(
+        self, timeout: int, stream_name: str, start_id_str: str
+    ) -> Array:
+        if stream_name not in self._streams:
+            self._streams[stream_name] = Stream()
+        result = await self._streams[stream_name].xread_block(timeout, start_id_str)
+        return Array([BulkString(stream_name), result])

@@ -50,6 +50,6 @@ class List:
 
             result = self._data.pop(0)
 
-        if len(self._data) > 0:
-            self._condition.notify(1)
+            if len(self._data) > 0:
+                self._condition.notify(1)
         return result

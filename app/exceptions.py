@@ -25,3 +25,7 @@ class StreamWrongIdError(Exception):
 
 class StreamWrongOrderError(Exception):
     """XaddWrongIDError"""
+
+
+class NoDataError(Exception):
+    """NoDataError"""

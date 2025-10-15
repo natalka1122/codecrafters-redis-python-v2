@@ -13,7 +13,7 @@ async def handle_xadd(args: list[str], redis_state: RedisState) -> RESPType[Any]
         return Error(f"XADD: len(args) = {len(args)} args = {args}")
     parameters: list[str] = args[2:]
     try:
-        result = redis_state.redis_variables.xadd(args[0], args[1], parameters)
+        result = await redis_state.redis_variables.xadd(args[0], args[1], parameters)
     except StreamWrongIdError:
         return Error("ERR The ID specified in XADD must be greater than 0-0")
     except StreamWrongOrderError:
