@@ -84,14 +84,5 @@ class ExpiringDict:
             return None
         return self._lists[key].lpop_one()
 
-    def lpop_many(self, key: str, count: int) -> list[str]:
-        return []
-        # if key not in self._lists:
-        #     return []
-        # the_list: List = self._lists[key]
-        # if len(the_list) == 0:
-        #     del self._lists[key]
-        #     return []
-
     def blpop(self, key: str, expiration: float) -> list[str]:
         return []
