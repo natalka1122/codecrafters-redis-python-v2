@@ -22,3 +22,7 @@ class CommandType(Enum):
     LPOP = "LPOP"
     BLPOP = "BLPOP"
     TYPE = "TYPE"
+    XADD = "XADD"
+    XRANGE = "XRANGE"
+    XREAD_STREAMS = "XREAD_STREAMS"
+    XREAD_BLOCK = "XREAD_BLOCK"

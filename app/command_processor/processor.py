@@ -17,6 +17,10 @@ from app.command_processor.handlers.llen import handle_llen
 from app.command_processor.handlers.lpop import handle_lpop
 from app.command_processor.handlers.blpop import handle_blpop
 from app.command_processor.handlers.type import handle_type
+from app.command_processor.handlers.xadd import handle_xadd
+from app.command_processor.handlers.xrange import handle_xrange
+from app.command_processor.handlers.xread_block import handle_xread_block
+from app.command_processor.handlers.xread_streams import handle_xread_streams
 
 from app.logging_config import get_logger
 
@@ -39,6 +43,10 @@ async def processor(data_resp: Array, redis_state: RedisState) -> RESPType[Any]:
         CommandType.LPOP: handle_lpop,
         CommandType.BLPOP: handle_blpop,
         CommandType.TYPE: handle_type,
+        CommandType.XADD: handle_xadd,
+        CommandType.XRANGE: handle_xrange,
+        CommandType.XREAD_BLOCK: handle_xread_block,
+        CommandType.XREAD_STREAMS: handle_xread_streams,
     }
 
     handler = handlers.get(command.cmd_type, handle_error)
