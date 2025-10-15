@@ -17,3 +17,11 @@ class WriterClosedError(Exception):
 
 class WrongRESPFormatError(Exception):
     """WrongRESPFormat"""
+
+
+class StreamWrongIdError(Exception):
+    """XaddWrongIDError"""
+
+
+class StreamWrongOrderError(Exception):
+    """XaddWrongIDError"""

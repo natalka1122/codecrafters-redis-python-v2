@@ -4,10 +4,22 @@ from app.redis_state import RedisState
 from app.resp.base import RESPType
 from app.resp.error import Error
 from app.resp.simple_string import SimpleString
+from app.exceptions import StreamWrongIdError, StreamWrongOrderError
 
 
 async def handle_xadd(args: list[str], redis_state: RedisState) -> RESPType[Any]:
     """Handle XADD command."""
     if not args or len(args) % 2 == 1:
         return Error(f"XADD: len(args) = {len(args)} args = {args}")
-    return SimpleString(redis_state.redis_variables.xadd(args[0], args[1], args[2:]))
+    try:
+        result = redis_state.redis_variables.xadd(args[0], args[1], args[2:])
+    except StreamWrongIdError:
+        return Error("ERR The ID specified in XADD must be greater than 0-0")
+    except StreamWrongOrderError:
+        return Error(
+            "ERR The ID specified in XADD is equal or smaller than the target stream top item"
+        )
+    if result is None:
+        return Error(f"XADD: len(args) = {len(args)} args = {args}")
+    else:
+        return SimpleString(result)
