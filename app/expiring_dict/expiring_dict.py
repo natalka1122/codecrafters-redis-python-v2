@@ -1,8 +1,10 @@
 import time
 from typing import Optional
+
+from app.exceptions import ItemNotFoundError
 from app.expiring_dict.list import List
 from app.expiring_dict.stream import Stream
-from app.exceptions import ItemNotFoundError
+from app.resp.array import Array
 
 
 class ExpiringDict:
@@ -103,3 +105,8 @@ class ExpiringDict:
             self._streams[stream_name] = Stream()
         key_resolved = self._streams[stream_name].xadd(key, parameters)
         return key_resolved
+
+    def xrange(self, stream_name: str, start_id: str, end_id: str) -> Array:
+        if stream_name not in self._streams:
+            return Array([])
+        return self._streams[stream_name].xrange(start_id, end_id)

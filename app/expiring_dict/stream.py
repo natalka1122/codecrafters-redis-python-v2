@@ -1,72 +1,141 @@
+import bisect
 import re
 import time
 from collections import OrderedDict
 from typing import Optional
 
-from app.logging_config import get_logger
 from app.exceptions import StreamWrongIdError, StreamWrongOrderError
+from app.logging_config import get_logger
+from app.resp.array import Array
+from app.resp.bulk_string import BulkString
 
 logger = get_logger(__name__)
 
-Item = list[str]
+
+Item = Array
 
 
-class Sequenced(list[str]):
-    def __init__(self, next_counter: int = 0) -> None:
-        self._data: OrderedDict[int, Item] = OrderedDict()
-        self.next_counter = next_counter
+def str_to_tuple(data: str) -> tuple[int, Optional[int]]:
+    if data == "*":
+        timestamp = int(time.time() * 1000)
+        counter = None
+    elif data.isdigit():
+        timestamp = int(data)
+        counter = None
+    else:
+        data_match = re.fullmatch(r"(\d+)-(\d+|\*)", data)
+        if data_match is None:
+            raise NotImplementedError
+        timestamp = int(data_match.group(1))
+        counter_group = data_match.group(2)
+        counter = int(counter_group) if counter_group.isdigit() else None
+    return timestamp, counter
 
-    def add_counter(self, counter: int, value: Item) -> None:
-        if self._data and counter < self.next_counter:
-            raise StreamWrongOrderError
-        self._data[counter] = value
-        self.next_counter = counter + 1
 
-    def add_next_counter(self, value: Item) -> int:
-        counter = self.next_counter
-        self._data[counter] = value
-        self.next_counter = counter + 1
-        return counter
+class Key:
+    def __init__(self, timestamp: int, counter: int) -> None:
+        self._data = f"{timestamp}-{counter}"
+        self._timestamp = timestamp
+        self._counter = counter
+        self._tuple = (self._timestamp, self._counter)
+
+    def __hash__(self) -> int:
+        return hash(self._data)
+
+    def __repr__(self) -> str:
+        return self._data
+
+    @property
+    def timestamp(self) -> int:
+        return self._timestamp
+
+    @property
+    def counter(self) -> int:
+        return self._counter
+
+    @property
+    def tuple(self) -> tuple[int, int]:
+        return self._tuple
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, Key):
+            raise NotImplementedError
+        return self.tuple < other.tuple
+
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, Key):
+            raise NotImplementedError
+        return self.tuple > other.tuple
 
 
-class Timestamped:
+class Stamped:
     def __init__(self) -> None:
-        self._data: OrderedDict[int, Sequenced] = OrderedDict()
-        self.last_timestamp = 0
+        self._data: OrderedDict[Key, Item] = OrderedDict()
+        self.next_stamp = Key(0, 1)
 
-    def add_timestamp(self, timestamp: int) -> None:
-        if self._data and timestamp < self.last_timestamp:
-            raise StreamWrongOrderError
-        if timestamp not in self._data:
-            self._data[timestamp] = Sequenced(1 if timestamp == 0 else 0)
-            self.last_timestamp = timestamp
+    @property
+    def stamps(self) -> list[Key]:
+        return list(self._data.keys())
 
-    def __getitem__(self, key: int) -> Sequenced:
+    def __getitem__(self, key: Key) -> Item:
         return self._data[key]
+
+    def __setitem__(self, key: Key, value: Item) -> None:
+        if key < self.next_stamp:
+            raise NotImplementedError
+        self._data[key] = value
+        self.next_stamp = Key(key.timestamp, key.counter + 1)
 
 
 class Stream:
     def __init__(self) -> None:
-        self._data: Timestamped = Timestamped()
+        self._data: Stamped = Stamped()
 
-    def xadd(self, key: str, parameters: list[str]) -> Optional[str]:
-        if key == "0-0":
+    def xadd(self, key_str: str, parameters: list[str]) -> Optional[str]:
+        if key_str == "0-0":
             raise StreamWrongIdError
-        if key == "*":
-            timestamp = int(time.time() * 1000)
-            counter_match = "*"
+        timestamp, counter = str_to_tuple(key_str)
+        if timestamp < self._data.next_stamp.timestamp:
+            raise StreamWrongOrderError
+        if timestamp == self._data.next_stamp.timestamp:
+            counter_int = self._data.next_stamp.counter if counter is None else counter
+            if counter_int < self._data.next_stamp.counter:
+                raise StreamWrongOrderError
         else:
-            key_match = re.match(r"(\d+)-(\d+|\*)", key)
-            if key_match is None:
-                return None
-            timestamp = int(key_match.group(1))
-            counter_match = key_match.group(2)
-        self._data.add_timestamp(timestamp)
-        if counter_match == "*":
-            counter = self._data[timestamp].add_next_counter(parameters)
-        else:
-            counter = int(counter_match)
-            self._data[timestamp].add_counter(counter, parameters)
+            counter_int = 0 if counter is None else counter
+        self._data[Key(timestamp, counter_int)] = Array(
+            list(map(BulkString, parameters))
+        )
 
-        logger.info(f"timestamp = {timestamp} counter = {counter}")
-        return f"{timestamp}-{counter}"
+        logger.info(f"timestamp = {timestamp} counter = {counter_int}")
+        return f"{timestamp}-{counter_int}"
+
+    def xrange(self, start_id_str: str, end_id_str: str) -> Array:
+        stamps_list = self._data.stamps
+        if start_id_str == "-":
+            start_id = Key(0, 1)
+        else:
+            start_ts, start_counter = str_to_tuple(start_id_str)
+            start_id = Key(start_ts, 0 if start_counter is None else start_counter)
+        start_index = bisect.bisect_left(stamps_list, start_id)
+        if start_index >= len(stamps_list):
+            return Array([])
+
+        if end_id_str == "+":
+            end_index = len(stamps_list)
+        else:
+            end_ts, end_counter = str_to_tuple(end_id_str)
+            if end_counter is None:
+                end_index = bisect.bisect_left(stamps_list, Key(end_ts + 1, 0))
+            else:
+                end_index = bisect.bisect_left(
+                    stamps_list, Key(end_ts, end_counter + 1)
+                )
+        logger.info(f"stamps_list = {stamps_list}")
+        logger.info(f"start_index = {start_index} end_index = {end_index}")
+        logger.info(str(stamps_list[start_index:end_index]))
+        result: list[Array] = []
+        for key in stamps_list[start_index:end_index]:
+            current_item: Array = Array([BulkString(str(key)), self._data[key]])
+            result.append(current_item)
+        return Array(result)

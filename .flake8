@@ -2,7 +2,7 @@
 max-line-length = 120
 ; extend-select = I
 ; exclude = .git,__pycache__,.venv,tmp,app/tests
-exclude = .git,__pycache__,.venv,tmp,ping_test.py,notebooks/sniff.py
+exclude = .git,__pycache__,.venv,tmp,notebooks/sniff.py,play*.py
 # Base flake8 configuration:
 # https://flake8.pycqa.org/en/latest/user/configuration.html
 format = wemake

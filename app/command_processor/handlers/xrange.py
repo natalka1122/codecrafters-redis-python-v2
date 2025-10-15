@@ -7,4 +7,6 @@ from app.resp.error import Error
 
 async def handle_xrange(args: list[str], redis_state: RedisState) -> RESPType[Any]:
     """Handle XRANGE command."""
-    return Error(f"XRANGE: NON IMPLEMENTED len(args) = {len(args)} args = {args}")
+    if len(args) != 3:
+        return Error(f"XRANGE: len(args) = {len(args)} args = {args}")
+    return redis_state.redis_variables.xrange(*args)
