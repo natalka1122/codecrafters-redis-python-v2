@@ -4,7 +4,7 @@ from app import const
 from app.connection.connection import Connection
 from app.exceptions import ReaderClosedError, WriterClosedError
 from app.logging_config import get_logger
-from app.command_processor.processor import processor
+from app.command_processor.processor import processor, transaction
 from app.redis_state import RedisState
 
 logger = get_logger(__name__)
@@ -64,8 +64,15 @@ async def handle_client(
         while True:  # noqa: WPS457
             data_parsed = await connection.read()
             logger.debug(f"{connection.peername}: Received command {data_parsed}")
-
-            response = await processor(data_parsed, redis_state)
+            if connection.is_transaction:
+                is_transaction, response = await transaction(
+                    data_parsed, redis_state, connection
+                )
+            else:
+                is_transaction, response = await processor(
+                    data_parsed, redis_state, connection
+                )
+            connection.is_transaction = is_transaction
             await connection.write(response.to_bytes)
             logger.debug(f"{connection.peername}: Sent response {response!r}")
 

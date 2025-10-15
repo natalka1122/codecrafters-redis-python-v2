@@ -19,6 +19,7 @@ class Connection:  # noqa: WPS214
         self.peername = self._writer.peername
         self._reader = AsyncReaderHandler(reader, peername=self.peername)
         self._closed = False
+        self.is_transaction: bool = False
         logger.debug(f"{self}: New connection")
 
     def __repr__(self) -> str:
