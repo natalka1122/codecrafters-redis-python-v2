@@ -167,10 +167,13 @@ class Stream:
         return Array(result)
 
     async def xread_block(self, timeout: int, start_id_str: str) -> Array:
-        start_ts, start_counter = str_to_tuple(start_id_str)
-        if start_counter is None:
-            raise NotImplementedError
-        start_id = Key(start_ts, start_counter)
+        if start_id_str == "$":
+            start_id = self._data.last_key
+        else:
+            start_ts, start_counter = str_to_tuple(start_id_str)
+            if start_counter is None:
+                raise NotImplementedError
+            start_id = Key(start_ts, start_counter)
 
         if len(self._data) == 0 or start_id >= self._data.last_key:
             async with self._condition:
