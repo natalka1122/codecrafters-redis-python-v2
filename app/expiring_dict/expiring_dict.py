@@ -97,3 +97,9 @@ class ExpiringDict:
         if key not in self._lists:
             self._lists[key] = List()
         return await self._lists[key].blpop(timeout)
+
+    def xadd(self, stream_name: str, key: str, parameters: list[str]) -> str:
+        if stream_name not in self._streams:
+            self._streams[stream_name] = Stream()
+        key_resolved = self._streams[stream_name].xadd(key, parameters)
+        return key_resolved
