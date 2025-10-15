@@ -40,17 +40,15 @@ class ExpiringDict:
             raise ItemNotFoundError
         return self._items[key]
 
-    def rpush(self, key: str, values: list[str]) -> int:
+    async def rpush(self, key: str, values: list[str]) -> int:
         if key not in self._lists:
             self._lists[key] = List()
-        self._lists[key].rpush(values)
-        return len(self._lists[key])
+        return await self._lists[key].rpush(values)
 
-    def lpush(self, key: str, values: list[str]) -> int:
+    async def lpush(self, key: str, values: list[str]) -> int:
         if key not in self._lists:
             self._lists[key] = List()
-        self._lists[key].lpush(values)
-        return len(self._lists[key])
+        return await self._lists[key].lpush(values)
 
     def llen(self, key: str) -> int:
         if key not in self._lists:
@@ -84,5 +82,7 @@ class ExpiringDict:
             return None
         return self._lists[key].lpop_one()
 
-    def blpop(self, key: str, expiration: float) -> list[str]:
-        return []
+    async def blpop(self, key: str, timeout: float) -> Optional[str]:
+        if key not in self._lists:
+            self._lists[key] = List()
+        return await self._lists[key].blpop(timeout)

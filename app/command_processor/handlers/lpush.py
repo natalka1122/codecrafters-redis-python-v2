@@ -10,4 +10,5 @@ async def handle_lpush(args: list[str], redis_state: RedisState) -> RESPType[Any
     """Handle LPUSH command."""
     if len(args) == 0:
         return Error(f"LPUSH: len(args) = {len(args)} args = {args}")
-    return Integer(redis_state.redis_variables.lpush(args[0], args[1:]))
+    result = await redis_state.redis_variables.lpush(args[0], args[1:])
+    return Integer(result)

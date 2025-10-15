@@ -1,15 +1,27 @@
 from typing import Optional
+from asyncio import Condition
 
 
 class List:
     def __init__(self) -> None:
         self._data: list[str] = []
+        self._condition: Condition = Condition()
 
-    def rpush(self, values: list[str]) -> None:
+    async def rpush(self, values: list[str]) -> int:
         self._data = self._data + values
+        result = len(self._data)
+        if len(self._data) > 0:
+            async with self._condition:
+                self._condition.notify(1)
+        return result
 
-    def lpush(self, values: list[str]) -> None:
+    async def lpush(self, values: list[str]) -> int:
         self._data = list(reversed(values)) + self._data
+        result = len(self._data)
+        if len(self._data) > 0:
+            async with self._condition:
+                self._condition.notify(1)
+        return result
 
     def llen(self) -> int:
         return len(self._data)
@@ -25,3 +37,11 @@ class List:
         if len(self._data) == 0:
             return None
         return self._data.pop(0)
+
+    async def blpop(self, timeout: float) -> Optional[str]:
+        async with self._condition:
+            await self._condition.wait_for(lambda: len(self._data) > 0)
+            result = self._data.pop(0)
+        if len(self._data) > 0:
+            self._condition.notify(1)
+        return result
