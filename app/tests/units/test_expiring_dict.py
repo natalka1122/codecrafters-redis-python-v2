@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.exceptions import ItemNotFoundError
-from app.expiring_dict import ExpiringDict
+from app.expiring_dict.expiring_dict import ExpiringDict
 
 
 @patch("time.time")

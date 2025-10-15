@@ -1,6 +1,7 @@
 import time
 from typing import Optional
-from app.list import List
+from app.expiring_dict.list import List
+from app.expiring_dict.stream import Stream
 from app.exceptions import ItemNotFoundError
 
 
@@ -9,6 +10,16 @@ class ExpiringDict:
         self._items: dict[str, str] = dict()
         self._expiration_ms: dict[str, int] = dict()
         self._lists: dict[str, List] = dict()
+        self._streams: dict[str, Stream] = dict()
+
+    def get_type(self, key: str) -> str:
+        if key in self._items:
+            return "string"
+        if self._lists.get(key):
+            return "list"
+        if key in self._streams:
+            return "stream"
+        return "none"
 
     def set(
         self,

@@ -21,3 +21,4 @@ class CommandType(Enum):
     LLEN = "LLEN"
     LPOP = "LPOP"
     BLPOP = "BLPOP"
+    TYPE = "TYPE"

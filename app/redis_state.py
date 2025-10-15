@@ -2,7 +2,7 @@ import asyncio
 from typing import Optional
 
 from app.connection.connection import Connection
-from app.expiring_dict import ExpiringDict
+from app.expiring_dict.expiring_dict import ExpiringDict
 from app.logging_config import get_logger
 
 logger = get_logger(__name__)
