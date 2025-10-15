@@ -1,11 +1,11 @@
 from typing import Optional
-from asyncio import Condition
+import asyncio
 
 
 class List:
     def __init__(self) -> None:
         self._data: list[str] = []
-        self._condition: Condition = Condition()
+        self._condition: asyncio.Condition = asyncio.Condition()
 
     async def rpush(self, values: list[str]) -> int:
         self._data = self._data + values
@@ -40,8 +40,16 @@ class List:
 
     async def blpop(self, timeout: float) -> Optional[str]:
         async with self._condition:
-            await self._condition.wait_for(lambda: len(self._data) > 0)
+            try:
+                await asyncio.wait_for(
+                    self._condition.wait_for(lambda: len(self._data) > 0),
+                    timeout=timeout if timeout > 0 else None,
+                )
+            except asyncio.TimeoutError:
+                return None
+
             result = self._data.pop(0)
+
         if len(self._data) > 0:
             self._condition.notify(1)
         return result

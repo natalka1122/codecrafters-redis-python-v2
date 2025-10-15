@@ -3,8 +3,8 @@ from typing import Any
 from app.redis_state import RedisState
 from app.resp.base import RESPType
 from app.resp.error import Error
-from app.resp.bulk_string import BulkString, NullBulkString
-from app.resp.array import Array
+from app.resp.bulk_string import BulkString
+from app.resp.array import Array, NullArray
 
 
 async def handle_blpop(args: list[str], redis_state: RedisState) -> RESPType[Any]:
@@ -17,5 +17,5 @@ async def handle_blpop(args: list[str], redis_state: RedisState) -> RESPType[Any
         return Error(f"BLPOP: timeout is not a valid float. args = {args}")
     result = await redis_state.redis_variables.blpop(args[0], timeout)
     if result is None:
-        return NullBulkString("")
+        return NullArray([])
     return Array([BulkString(args[0]), BulkString(result)])

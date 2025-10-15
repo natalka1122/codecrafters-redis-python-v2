@@ -51,3 +51,26 @@ class Array(RESPType[RESPSequence]):  # noqa: WPS214
         prefix = f"{chr(ARRAY)}{len(self.data)}".encode("utf-8") + END_LINE
         array_bytes = b"".join(value.to_bytes for value in self.data)
         return prefix + array_bytes
+
+
+class NullArray(Array):  # noqa: WPS214
+    @property
+    def name(self) -> str:
+        return "NullArray"
+
+    def __len__(self) -> int:
+        return 0
+
+    @classmethod
+    def from_bytes(cls, raw_bytes: bytes) -> tuple[bytes, "Array"]:  # noqa: WPS210
+        target = b"*-1\r\n"
+        if len(raw_bytes) < len(target):
+            raise NeedMoreBytesError
+        if raw_bytes[: len(target)] != target:
+            raise WrongRESPFormatError(
+                f"NullArray.from_bytes(): raw_bytes = {raw_bytes!r}"
+            )
+        return raw_bytes[len(target) :], NullArray([])
+
+    def _to_bytes(self) -> bytes:
+        return b"*-1\r\n"
