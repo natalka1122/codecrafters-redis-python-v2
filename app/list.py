@@ -1,3 +1,5 @@
+from typing import Optional
+
 class List:
     def __init__(self) -> None:
         self._data: list[str] = []
@@ -17,3 +19,8 @@ class List:
     def __getitem__(self, key: int | slice) -> str | list[str]:
         """Support indexing and slicing operations."""
         return self._data[key]
+
+    def lpop_one(self) -> Optional[str]:
+        if len(self._data) == 0:
+            return None
+        return self._data.pop(0)

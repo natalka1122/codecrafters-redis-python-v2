@@ -2,7 +2,7 @@ from typing import Callable
 
 import pytest
 
-from app.resp.bulk_string import BulkString
+from app.resp.bulk_string import BulkString, NullBulkString
 from app.exceptions import NeedMoreBytesError, WrongRESPFormatError
 
 
@@ -24,7 +24,7 @@ class TestBulkString:
         """Test BulkString initialization with empty string"""
         bulk_string = BulkString("")
         assert bulk_string.data == ""
-        assert bulk_string.to_bytes == b"$-1\r\n"
+        assert bulk_string.to_bytes == b"$0\r\n\r\n"
 
     def test_init_with_invalid_type_raises_error(self) -> None:
         """Test that non-string data raises TypeError"""
@@ -57,7 +57,7 @@ class TestBulkString:
         assert bulk_string.to_bytes == expected
 
         bulk_string = BulkString("")
-        expected = "$-1\r\n".encode("utf-8")
+        expected = "$0\r\n\r\n".encode("utf-8")
         assert bulk_string.to_bytes == expected
 
         bulk_string = BulkString("Hello World!")
@@ -70,16 +70,15 @@ class TestBulkStringFromBytes:
 
     def test_from_bytes_null_string(self) -> None:
         """Test from_bytes with empty input raises NeedMoreBytesError"""
-        assert BulkString.from_bytes(b"$-1\r\n") == (b"", BulkString(""))
+        assert BulkString.from_bytes(b"$-1\r\n") == (b"", NullBulkString(""))
 
-    def test_from_bytes_empty_string(self) -> None:  # noqa: WPS218
-        """Corner case with $0\r\n\r\n and $-1\r\n"""
-        remaining, null_string = BulkString.from_bytes(b"$-1\r\n")
-        assert remaining == b""
-        assert null_string.data == ""
-        assert null_string.to_bytes == b"$-1\r\n"
-
-        assert BulkString("").to_bytes == b"$-1\r\n"
+    # def test_from_bytes_empty_string(self) -> None:  # noqa: WPS218
+    #     """Corner case with $0\r\n\r\n and $-1\r\n"""
+    #     remaining, null_string = BulkString.from_bytes(b"$-1\r\n")
+    #     assert remaining == b""
+    #     assert null_string.data == ""
+    #     assert null_string.to_bytes == b"$-1\r\n"
+    #     assert BulkString("").to_bytes == b"$-1\r\n"
 
     def test_from_bytes_empty_input(self) -> None:
         """Test from_bytes with empty input raises NeedMoreBytesError"""

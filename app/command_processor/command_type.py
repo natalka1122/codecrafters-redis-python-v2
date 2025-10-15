@@ -19,3 +19,5 @@ class CommandType(Enum):
     LPUSH = "LPUSH"
     LRANGE = "LRANGE"
     LLEN = "LLEN"
+    LPOP = "LPOP"
+    BLPOP = "BLPOP"
