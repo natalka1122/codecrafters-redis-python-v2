@@ -12,15 +12,21 @@ Item = list[str]
 
 
 class Sequenced(list[str]):
-    def __init__(self, last_counter: int = 0) -> None:
+    def __init__(self, next_counter: int = 0) -> None:
         self._data: OrderedDict[int, Item] = OrderedDict()
-        self.last_counter = last_counter
+        self.next_counter = next_counter
 
     def add_counter(self, counter: int, value: Item) -> None:
-        if self._data and counter <= self.last_counter:
+        if self._data and counter < self.next_counter:
             raise StreamWrongOrderError
         self._data[counter] = value
-        self.last_counter = counter
+        self.next_counter = counter + 1
+
+    def add_next_counter(self, value: Item) -> int:
+        counter = self.next_counter
+        self._data[counter] = value
+        self.next_counter = counter + 1
+        return counter
 
 
 class Timestamped:
@@ -57,13 +63,10 @@ class Stream:
             counter_match = key_match.group(2)
         self._data.add_timestamp(timestamp)
         if counter_match == "*":
-            logger.error("NotImplementedError")
-            raise NotImplementedError
+            counter = self._data[timestamp].add_next_counter(parameters)
         else:
             counter = int(counter_match)
-
             self._data[timestamp].add_counter(counter, parameters)
 
         logger.info(f"timestamp = {timestamp} counter = {counter}")
-
-        return key
+        return f"{timestamp}-{counter}"

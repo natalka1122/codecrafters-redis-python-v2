@@ -3,7 +3,7 @@ from typing import Any
 from app.redis_state import RedisState
 from app.resp.base import RESPType
 from app.resp.error import Error
-from app.resp.simple_string import SimpleString
+from app.resp.bulk_string import BulkString
 from app.exceptions import StreamWrongIdError, StreamWrongOrderError
 
 
@@ -22,4 +22,4 @@ async def handle_xadd(args: list[str], redis_state: RedisState) -> RESPType[Any]
     if result is None:
         return Error(f"XADD: len(args) = {len(args)} args = {args}")
     else:
-        return SimpleString(result)
+        return BulkString(result)
