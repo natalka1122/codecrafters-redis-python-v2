@@ -22,8 +22,10 @@ from app.command_processor.handlers.set import handle_set
 from app.command_processor.handlers.type import handle_type
 from app.command_processor.handlers.xadd import handle_xadd
 from app.command_processor.handlers.xrange import handle_xrange
-from app.command_processor.handlers.xread_block import handle_xread_block
-from app.command_processor.handlers.xread_streams import handle_xread_streams
+from app.command_processor.handlers.xread import (
+    handle_xread_block,
+    handle_xread_streams,
+)
 from app.connection.connection import Connection
 from app.redis_state import RedisState
 from app.resp.base import RESPType
