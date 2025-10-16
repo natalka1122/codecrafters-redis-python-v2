@@ -11,6 +11,7 @@ from app.command_processor.handlers.error import handle_error
 from app.command_processor.handlers.exec import handle_exec_no_multi
 from app.command_processor.handlers.get import handle_get
 from app.command_processor.handlers.incr import handle_incr
+from app.command_processor.handlers.info_replication import handle_info_replication
 from app.command_processor.handlers.llen import handle_llen
 from app.command_processor.handlers.lpop import handle_lpop
 from app.command_processor.handlers.lpush import handle_lpush
@@ -51,6 +52,7 @@ async def default_exec(
         CommandType.INCR: handle_incr,
         CommandType.EXEC: handle_exec_no_multi,
         CommandType.DISCARD: handle_discard_no_multy,
+        CommandType.INFO_REPLICATION: handle_info_replication,
     }
 
     handler = handlers.get(command.cmd_type, handle_error)

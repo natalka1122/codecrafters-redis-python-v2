@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import signal
 import sys
@@ -6,6 +7,7 @@ from typing import Callable
 
 from app.frontend import master_redis
 from app.logging_config import get_logger, setup_logging
+from app.redis_config import RedisConfig
 
 setup_logging(level="DEBUG", log_dir="logs")
 # setup_logging(level="ERROR", log_dir="logs")
@@ -35,11 +37,31 @@ def setup_signal_handlers(shutdown_event: asyncio.Event) -> None:
             loop.add_signal_handler(sig, make_signal_handler(sig, shutdown_event))
 
 
+def parse_args() -> RedisConfig:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--port", type=int, help="Port")
+    parser.add_argument("--dir", type=str, help="Working dir")
+    parser.add_argument("--dbfilename", type=str, help="Filename for persistent DB")
+    parser.add_argument("--replicaof", type=str, help="Replica config")
+    args = parser.parse_args()
+    return RedisConfig(
+        dir_name=args.dir,
+        dbfilename=args.dbfilename,
+        port=args.port,
+        replicaof=args.replicaof,
+    )
+
+
 async def main() -> None:
+    redis_config = parse_args()
     started_event = asyncio.Event()
     shutdown_event = asyncio.Event()
     setup_signal_handlers(shutdown_event)
-    await master_redis(started_event=started_event, shutdown_event=shutdown_event)
+    await master_redis(
+        redis_config=redis_config,
+        started_event=started_event,
+        shutdown_event=shutdown_event,
+    )
 
 
 if __name__ == "__main__":

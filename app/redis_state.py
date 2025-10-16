@@ -4,6 +4,7 @@ from typing import Optional
 from app.connection.connection import Connection
 from app.expiring_dict.expiring_dict import ExpiringDict
 from app.logging_config import get_logger
+from app.redis_config import RedisConfig
 
 logger = get_logger(__name__)
 
@@ -11,12 +12,18 @@ logger = get_logger(__name__)
 class RedisState:
     def __init__(
         self,
+        redis_config: RedisConfig,
         redis_variables: Optional[ExpiringDict] = None,
     ) -> None:
+        self.redis_config = redis_config
         self.redis_variables: ExpiringDict = (
             ExpiringDict() if redis_variables is None else redis_variables
         )
         self.connections: dict[str, Connection] = dict()
+
+    @property
+    def is_master(self) -> bool:
+        return len(self.redis_config.replicaof) == 0
 
     def add_new_connection(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter

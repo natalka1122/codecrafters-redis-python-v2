@@ -5,15 +5,18 @@ from app.command_processor.processor import processor, transaction
 from app.connection.connection import Connection
 from app.exceptions import ReaderClosedError, WriterClosedError
 from app.logging_config import get_logger
+from app.redis_config import RedisConfig
 from app.redis_state import RedisState
 
 logger = get_logger(__name__)
 
 
 async def master_redis(
-    started_event: asyncio.Event, shutdown_event: asyncio.Event
+    redis_config: RedisConfig,
+    started_event: asyncio.Event,
+    shutdown_event: asyncio.Event,
 ) -> None:
-    redis_state = RedisState()
+    redis_state = RedisState(redis_config=redis_config)
     try:
         server = await asyncio.start_server(
             lambda reader, writer: handle_client(
@@ -22,7 +25,7 @@ async def master_redis(
                 redis_state=redis_state,
             ),
             const.HOST,
-            const.DEFAULT_PORT,
+            redis_config.port,
         )
     except OSError as error:
         logger.error(f"Cannot start server: {error}")
