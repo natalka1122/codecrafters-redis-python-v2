@@ -1,26 +1,26 @@
-from typing import Optional
 import asyncio
+from typing import Optional
 
 
-class List:
+class List:  # noqa: WPS214
     def __init__(self) -> None:
         self._data: list[str] = []
         self._condition: asyncio.Condition = asyncio.Condition()
 
     async def rpush(self, values: list[str]) -> int:
-        self._data = self._data + values
-        result = len(self._data)
-        if len(self._data) > 0:
-            async with self._condition:
-                self._condition.notify(1)
+        async with self._condition:
+            self._data = self._data + values
+            result = len(self._data)
+            if result > 0:
+                self._condition.notify_all()
         return result
 
     async def lpush(self, values: list[str]) -> int:
-        self._data = list(reversed(values)) + self._data
-        result = len(self._data)
-        if len(self._data) > 0:
-            async with self._condition:
-                self._condition.notify(1)
+        async with self._condition:
+            self._data = list(reversed(values)) + self._data
+            result = len(self._data)
+            if result > 0:
+                self._condition.notify_all()
         return result
 
     def llen(self) -> int:
@@ -33,10 +33,19 @@ class List:
         """Support indexing and slicing operations."""
         return self._data[key]
 
-    def lpop_one(self) -> Optional[str]:
-        if len(self._data) == 0:
-            return None
-        return self._data.pop(0)
+    async def lpop_one(self) -> Optional[str]:
+        async with self._condition:
+            if len(self._data) == 0:
+                return None
+            return self._data.pop(0)
+
+    async def lpop_many(self, count: int) -> Optional[list[str]]:
+        async with self._condition:
+            if len(self._data) == 0:
+                return None
+            result = self._data[:count]
+            self._data = self._data[count:]
+            return result
 
     async def blpop(self, timeout: float) -> Optional[str]:
         async with self._condition:
@@ -47,9 +56,5 @@ class List:
                 )
             except asyncio.TimeoutError:
                 return None
-
             result = self._data.pop(0)
-
-            if len(self._data) > 0:
-                self._condition.notify(1)
         return result

@@ -1,5 +1,6 @@
 from typing import Any
 
+from app.connection.connection import Connection
 from app.exceptions import NoDataError
 from app.redis_state import RedisState
 from app.resp.array import Array, NullArray
@@ -8,7 +9,7 @@ from app.resp.error import Error
 
 
 async def handle_xread_streams(
-    args: list[str], redis_state: RedisState
+    args: list[str], redis_state: RedisState, connection: Connection
 ) -> RESPType[Any]:
     """Handle XREAD STREAMS command."""
     if len(args) % 2 != 0:
@@ -17,14 +18,14 @@ async def handle_xread_streams(
     middle = len(args) // 2
     for index in range(middle):
         result.append(
-            redis_state.redis_variables.xread_one_stream(
-                args[index], args[middle + index]
-            )
+            redis_state.redis_variables.xread_one_stream(args[index], args[middle + index])
         )
     return Array(result)
 
 
-async def handle_xread_block(args: list[str], redis_state: RedisState) -> RESPType[Any]:
+async def handle_xread_block(
+    args: list[str], redis_state: RedisState, connection: Connection
+) -> RESPType[Any]:
     """Handle XREAD BLOCK command."""
     if len(args) != 4 or args[1].upper() != "STREAMS":
         return Error(f"XREAD BLOCK: len(args) = {len(args)} args = {args}")
@@ -33,9 +34,7 @@ async def handle_xread_block(args: list[str], redis_state: RedisState) -> RESPTy
     except ValueError:
         return Error(f"XREAD BLOCK: timeout is not a valid integer. args = {args}")
     try:
-        result = await redis_state.redis_variables.xread_block(
-            timeout, args[2], args[3]
-        )
+        result = await redis_state.redis_variables.xread_block(timeout, args[2], args[3])
     except NoDataError:
         return NullArray([])
     return Array([result])

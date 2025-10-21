@@ -1,35 +1,44 @@
-from asyncio import StreamReader, StreamWriter
+from asyncio import (
+    CancelledError,
+    Event,
+    StreamReader,
+    StreamWriter,
+    Task,
+    create_task,
+    wait,
+)
+from typing import Any
 
 from app.command_processor.command import Command
 from app.connection.async_reader import AsyncReaderHandler
 from app.connection.async_writer import AsyncWriterHandler
-from app.exceptions import ReaderClosedError, WriterClosedError
 from app.logging_config import get_logger
 from app.resp.array import Array
+from app.resp.base import RESPType
+from app.resp.bulk_string import BulkString
 
 logger = get_logger(__name__)
 
 
-class Connection:  # noqa: WPS214
-    def __init__(
-        self,
-        reader: StreamReader,
-        writer: StreamWriter,
-    ) -> None:
-        self._writer = AsyncWriterHandler(writer)
+class Connection:
+    def __init__(self, reader: StreamReader, writer: StreamWriter) -> None:
+        self.closed = Event()
+        self.closing = Event()
+        self._writer = AsyncWriterHandler(writer, rw_closing_event=self.closing)
         self.peername = self._writer.peername
-        self._reader = AsyncReaderHandler(reader, peername=self.peername)
-        self._closed = False
+        self._reader = AsyncReaderHandler(
+            reader, peername=self.peername, rw_closing_event=self.closing
+        )
         self._is_transaction: bool = False
         self.transaction: list[Command] = []
+        self.is_replica = False
+        self._closure_task: Task[None] = create_task(
+            self._closure_loop(), name="Connection._closure_loop"
+        )
         logger.debug(f"{self}: New connection")
 
     def __repr__(self) -> str:
         return self.peername
-
-    @property
-    def is_closed(self) -> bool:
-        return self._closed
 
     @property
     def is_transaction(self) -> bool:
@@ -41,31 +50,28 @@ class Connection:  # noqa: WPS214
             self.transaction = []
         self._is_transaction = value
 
-    async def read(self) -> Array:
+    async def read(self) -> RESPType[Any]:
         try:
-            return await self._reader.read()
-        except ReaderClosedError:
-            await self.close()
+            result = await self._reader.read()
+        except CancelledError:
+            logger.info("Connection.read CancelledError")
             raise
+        if isinstance(result, Array):
+            return result
+        return Array([BulkString("Got non-array:"), BulkString(str(result))])
 
     async def write(self, data: bytes) -> None:
         try:
             await self._writer.write(data)
-        except WriterClosedError:
-            await self.close()
+        except CancelledError:
+            logger.info("Connection.write CancelledError")
             raise
 
-    async def close(self) -> None:
-        """Close the connection and clean up resources."""
-        if self._closed:
-            return
-        self._closed = True
-        logger.debug(f"{self}: Closing connection")
-
-        # Close writer first to stop new data
-        await self._writer.close()
-
-        # Close reader
-        await self._reader.close()
-
+    async def _closure_loop(self) -> None:
+        await self.closing.wait()
+        logger.info(f"{self}: Closing connection")
+        writer_closure_task = create_task(self._writer.closed.wait())
+        reader_closure_task = create_task(self._reader.closed.wait())
+        await wait([writer_closure_task, reader_closure_task])
+        self.closed.set()
         logger.info(f"{self}: Connection closed")

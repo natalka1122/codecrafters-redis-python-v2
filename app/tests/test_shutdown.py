@@ -14,6 +14,7 @@ from app.frontend import master_redis
 from app.resp.array import Array
 from app.resp.bulk_string import BulkString
 from app.resp.simple_string import SimpleString
+from app.redis_state import RedisState
 
 
 class TestEchoServer:
@@ -28,6 +29,7 @@ class TestEchoServer:
         # Start worker in background
         worker_task: Task[None] = create_task(
             master_redis(
+                redis_state=RedisState(),
                 started_event=started_event,
                 shutdown_event=shutdown_event,
             )
@@ -57,6 +59,7 @@ class TestEchoServer:
 
         worker_task = create_task(
             master_redis(
+                redis_state=RedisState(),
                 started_event=started_event,
                 shutdown_event=shutdown_event,
             )
@@ -85,6 +88,7 @@ class TestEchoServer:
         pong_bytes = SimpleString("PONG").to_bytes
         master_task: Task[None] = create_task(
             master_redis(
+                redis_state=RedisState(),
                 started_event=started_event,
                 shutdown_event=shutdown_event,
             )

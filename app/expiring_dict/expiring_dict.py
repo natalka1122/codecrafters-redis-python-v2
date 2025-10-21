@@ -1,4 +1,5 @@
 import time
+from collections import defaultdict
 from typing import Optional
 
 from app.exceptions import ItemNotFoundError, NotIntegerError
@@ -8,12 +9,12 @@ from app.resp.array import Array
 from app.resp.bulk_string import BulkString
 
 
-class ExpiringDict:
+class ExpiringDict:  # noqa: WPS214
     def __init__(self) -> None:
         self._items: dict[str, str] = dict()
         self._expiration_ms: dict[str, int] = dict()
-        self._lists: dict[str, List] = dict()
-        self._streams: dict[str, Stream] = dict()
+        self._lists: defaultdict[str, List] = defaultdict(List)
+        self._streams: defaultdict[str, Stream] = defaultdict(Stream)
 
     def get_type(self, key: str) -> str:
         item = self._items.get(key)
@@ -56,23 +57,15 @@ class ExpiringDict:
         return self._items[key]
 
     async def rpush(self, key: str, values: list[str]) -> int:
-        if key not in self._lists:
-            self._lists[key] = List()
         return await self._lists[key].rpush(values)
 
     async def lpush(self, key: str, values: list[str]) -> int:
-        if key not in self._lists:
-            self._lists[key] = List()
         return await self._lists[key].lpush(values)
 
     def llen(self, key: str) -> int:
-        if key not in self._lists:
-            return 0
         return len(self._lists[key])
 
     def lrange(self, key: str, start_index: int, stop_index: int) -> list[str]:
-        if key not in self._lists:
-            return []
         the_list: List = self._lists[key]
         len_the_list = len(the_list)
         if start_index > len_the_list:
@@ -92,31 +85,22 @@ class ExpiringDict:
             return [result]
         return result
 
-    def lpop_one(self, key: str) -> Optional[str]:
-        if key not in self._lists:
-            return None
-        return self._lists[key].lpop_one()
+    async def lpop_one(self, key: str) -> Optional[str]:
+        return await self._lists[key].lpop_one()
+
+    async def lpop_many(self, key: str, count: int = 1) -> Optional[list[str]]:
+        return await self._lists[key].lpop_many(count)
 
     async def blpop(self, key: str, timeout: float) -> Optional[str]:
-        if key not in self._lists:
-            self._lists[key] = List()
         return await self._lists[key].blpop(timeout)
 
-    async def xadd(
-        self, stream_name: str, key: str, parameters: list[str]
-    ) -> Optional[str]:
-        if stream_name not in self._streams:
-            self._streams[stream_name] = Stream()
+    async def xadd(self, stream_name: str, key: str, parameters: list[str]) -> Optional[str]:
         return await self._streams[stream_name].xadd(key, parameters)
 
     def xrange(self, stream_name: str, start_id: str, end_id: str) -> Array:
-        if stream_name not in self._streams:
-            return Array([])
         return self._streams[stream_name].xrange(start_id, end_id)
 
     def xread_one_stream(self, stream_name: str, start_id: str) -> Array:
-        if stream_name not in self._streams:
-            return Array([])
         return Array(
             [
                 BulkString(stream_name),
@@ -124,11 +108,7 @@ class ExpiringDict:
             ]
         )
 
-    async def xread_block(
-        self, timeout: int, stream_name: str, start_id_str: str
-    ) -> Array:
-        if stream_name not in self._streams:
-            self._streams[stream_name] = Stream()
+    async def xread_block(self, timeout: int, stream_name: str, start_id_str: str) -> Array:
         result = await self._streams[stream_name].xread_block(timeout, start_id_str)
         return Array([BulkString(stream_name), result])
 

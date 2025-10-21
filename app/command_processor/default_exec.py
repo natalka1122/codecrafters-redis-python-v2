@@ -1,22 +1,26 @@
+# flake8: noqa
 from typing import Any
 
 from app.command_processor.command import Command
 from app.command_processor.command_type import CommandType
 from app.command_processor.handlers.blpop import handle_blpop
-from app.command_processor.handlers.discard import (
-    handle_discard_no_multy,
-)
+from app.command_processor.handlers.discard import handle_discard_no_multy
 from app.command_processor.handlers.echo import handle_echo
 from app.command_processor.handlers.error import handle_error
 from app.command_processor.handlers.exec import handle_exec_no_multi
 from app.command_processor.handlers.get import handle_get
 from app.command_processor.handlers.incr import handle_incr
-from app.command_processor.handlers.info_replication import handle_info_replication
+from app.command_processor.handlers.info import handle_info_replication
 from app.command_processor.handlers.llen import handle_llen
 from app.command_processor.handlers.lpop import handle_lpop
 from app.command_processor.handlers.lpush import handle_lpush
 from app.command_processor.handlers.lrange import handle_lrange
 from app.command_processor.handlers.ping import handle_ping
+from app.command_processor.handlers.psync import handle_psync
+from app.command_processor.handlers.replconf import (
+    handle_replconf_capa,
+    handle_replconf_lp,
+)
 from app.command_processor.handlers.rpush import handle_rpush
 from app.command_processor.handlers.set import handle_set
 from app.command_processor.handlers.type import handle_type
@@ -34,7 +38,6 @@ from app.resp.base import RESPType
 async def default_exec(
     command: Command, redis_state: RedisState, connection: Connection
 ) -> RESPType[Any]:
-    # Direct mapping of command types to handlers
     handlers = {
         CommandType.PING: handle_ping,
         CommandType.ECHO: handle_echo,
@@ -55,7 +58,10 @@ async def default_exec(
         CommandType.EXEC: handle_exec_no_multi,
         CommandType.DISCARD: handle_discard_no_multy,
         CommandType.INFO_REPLICATION: handle_info_replication,
+        CommandType.REPLCONF_CAPA: handle_replconf_capa,
+        CommandType.REPLCONF_LP: handle_replconf_lp,
+        CommandType.PSYNC: handle_psync,
     }
 
     handler = handlers.get(command.cmd_type, handle_error)
-    return await handler(command.args, redis_state)
+    return await handler(command.args, redis_state=redis_state, connection=connection)

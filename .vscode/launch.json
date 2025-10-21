@@ -4,8 +4,21 @@
     {
       "type": "debugpy",
       "request": "launch",
-      "name": "Launch Redis Server",
+      "name": "Launch Redis Master",
       "program": "${workspaceFolder}/app/main.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "justMyCode": true
+    },
+    {
+      "type": "debugpy",
+      "request": "launch",
+      "name": "Launch Redis Slave (port 6380)",
+      "program": "${workspaceFolder}/app/main.py",
+      "args": ["--port", "6380", "--replicaof", "127.0.0.1 6379"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {

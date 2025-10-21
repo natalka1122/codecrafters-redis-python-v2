@@ -27,7 +27,7 @@ async def handle_exec(
 
 
 async def handle_exec_no_multi(
-    args: list[str], redis_state: RedisState
+    args: list[str], redis_state: RedisState, connection: Connection
 ) -> RESPType[Any]:
     """Handle EXEC command outside transaction"""
     return Error("ERR EXEC without MULTI")

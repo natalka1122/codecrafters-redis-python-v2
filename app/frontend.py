@@ -1,22 +1,22 @@
 import asyncio
+import base64
 
-from app import const
 from app.command_processor.processor import processor, transaction
 from app.connection.connection import Connection
+from app.const import EMPTY_RDB_B64, HOST
 from app.exceptions import ReaderClosedError, WriterClosedError
 from app.logging_config import get_logger
-from app.redis_config import RedisConfig
 from app.redis_state import RedisState
+from app.resp.file_dump import FileDump
 
 logger = get_logger(__name__)
 
 
 async def master_redis(
-    redis_config: RedisConfig,
+    redis_state: RedisState,
     started_event: asyncio.Event,
     shutdown_event: asyncio.Event,
 ) -> None:
-    redis_state = RedisState(redis_config=redis_config)
     try:
         server = await asyncio.start_server(
             lambda reader, writer: handle_client(
@@ -24,8 +24,8 @@ async def master_redis(
                 writer=writer,
                 redis_state=redis_state,
             ),
-            const.HOST,
-            redis_config.port,
+            HOST,
+            redis_state.redis_config.port,
         )
     except OSError as error:
         logger.error(f"Cannot start server: {error}")
@@ -45,17 +45,26 @@ async def master_redis(
             raise
         finally:
             logger.info("Closing server...")
-            # Cancel all active client handlers
-            await asyncio.gather(
-                *(
-                    connection.close()
-                    for connection in redis_state.connections.values()
-                ),
-                return_exceptions=True,  # Don't fail if one close() fails
-            )
+            await close_connections(list(redis_state.connections.values()))
 
 
-async def handle_client(
+async def close_connections(connections: list[Connection]) -> None:
+    if not connections:
+        logger.info("Server closed")
+        return
+    tasks: list[asyncio.Task[bool]] = []
+    for connection in connections:
+        connection.closing.set()
+        tasks.append(asyncio.create_task(connection.closed.wait()))
+    done, pending = await asyncio.wait(tasks)
+    len_pending = len(pending)
+    if len_pending > 0:
+        logger.info(f"Closed {len(done)} connections, {len_pending} connections left")
+    else:
+        logger.info(f"Closed all {len(done)} connections")
+
+
+async def handle_client(  # noqa: WPS217
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
     redis_state: RedisState,
@@ -64,7 +73,7 @@ async def handle_client(
     logger.debug(f"{connection.peername}: New connection")
 
     try:
-        while True:  # noqa: WPS457
+        while not connection.is_replica:  # noqa: WPS457
             data_parsed = await connection.read()
             logger.debug(f"{connection.peername}: Received command {data_parsed}")
             if connection.is_transaction:
@@ -73,7 +82,6 @@ async def handle_client(
                 response = await processor(data_parsed, redis_state, connection)
             await connection.write(response.to_bytes)
             logger.debug(f"{connection.peername}: Sent response {response!r}")
-            logger.debug(f"is_transaction = {connection.is_transaction}")
 
     except (ReaderClosedError, WriterClosedError):
         logger.debug(f"{connection.peername}: Client disconnected")
@@ -83,8 +91,21 @@ async def handle_client(
     except Exception as e:
         logger.error(f"{connection.peername}: Error in client handler: {e}")
 
+    if connection.is_replica:
+        await handle_replica(connection=connection, redis_state=redis_state)
     # Clean up the connection (only reached if not cancelled)
     await _close_connection(connection, redis_state)
+
+
+async def handle_replica(connection: Connection, redis_state: RedisState) -> None:
+    if not connection.is_replica:
+        raise NotImplementedError
+
+    file_dump = FileDump(base64.b64decode(EMPTY_RDB_B64)).to_bytes
+    await connection.write(file_dump)
+    logger.info(f"{connection.peername}: Sent FileDump")
+    await connection.closed.wait()
+    logger.info(f"{connection.peername}: Replica is done")
 
 
 async def _close_connection(connection: Connection, redis_state: RedisState) -> None:

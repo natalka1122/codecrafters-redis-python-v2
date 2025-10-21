@@ -15,14 +15,13 @@ from app.command_processor.handlers.multi import (
 from app.connection.connection import Connection
 from app.logging_config import get_logger
 from app.redis_state import RedisState
-from app.resp.array import Array
 from app.resp.base import RESPType
 
 logger = get_logger(__name__)
 
 
 async def processor(
-    data_resp: Array, redis_state: RedisState, connection: Connection
+    data_resp:  RESPType[Any], redis_state: RedisState, connection: Connection
 ) -> RESPType[Any]:
     """Process Redis commands and return appropriate responses."""
     command = Command(data_resp)
@@ -34,7 +33,7 @@ async def processor(
 
 
 async def transaction(
-    data_resp: Array, redis_state: RedisState, connection: Connection
+    data_resp: RESPType[Any], redis_state: RedisState, connection: Connection
 ) -> RESPType[Any]:
     """Record transaction"""
     command = Command(data_resp)

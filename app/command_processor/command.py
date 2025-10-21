@@ -1,14 +1,23 @@
-from app.resp.array import Array
-from app.resp.bulk_string import BulkString
+from typing import Any
+
 from app.command_processor.command_type import CommandType
+from app.resp.array import Array
+from app.resp.base import RESPType
+from app.resp.bulk_string import BulkString
 
 
 class Command:
     def __init__(
         self,
-        data_resp: Array,
+        data_resp: RESPType[Any],
     ) -> None:
         self._to_bytes = data_resp.to_bytes
+
+        if not isinstance(data_resp, Array):
+            self._cmd_type = CommandType.ERROR
+            self._args = [f"Unsupported data: {data_resp}"]
+            return
+
         if len(data_resp) == 0:
             self._cmd_type = CommandType.ERROR
             self._args = [f"Empty command: {data_resp}"]

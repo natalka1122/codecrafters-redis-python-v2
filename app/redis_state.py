@@ -12,10 +12,10 @@ logger = get_logger(__name__)
 class RedisState:
     def __init__(
         self,
-        redis_config: RedisConfig,
+        redis_config: Optional[RedisConfig] = None,
         redis_variables: Optional[ExpiringDict] = None,
     ) -> None:
-        self.redis_config = redis_config
+        self.redis_config: RedisConfig = RedisConfig() if redis_config is None else redis_config
         self.redis_variables: ExpiringDict = (
             ExpiringDict() if redis_variables is None else redis_variables
         )
@@ -34,9 +34,7 @@ class RedisState:
         # Handle potential duplicate connections
         if peername in self.connections:
             logger.warning(f"Replacing existing connection for {peername}")
-            old_connection = self.connections.get(peername)
-            if old_connection:
-                asyncio.create_task(old_connection.close())
+            self.connections.pop(peername, None)
 
         self.connections[peername] = connection
         logger.debug(f"Added new connection {peername}")
@@ -53,5 +51,5 @@ class RedisState:
             logger.warning(f"Connection {peername} already removed")
 
         # Actually close the connection
-        if not connection.is_closed:
-            await connection.close()
+        connection.closing.set()
+        await connection.closed.wait()

@@ -5,8 +5,8 @@ import sys
 from functools import partial
 from typing import Callable
 
-from app.frontend import master_redis
 from app.logging_config import get_logger, setup_logging
+from app.redis_app import redis_app
 from app.redis_config import RedisConfig
 
 setup_logging(level="DEBUG", log_dir="logs")
@@ -57,7 +57,7 @@ async def main() -> None:
     started_event = asyncio.Event()
     shutdown_event = asyncio.Event()
     setup_signal_handlers(shutdown_event)
-    await master_redis(
+    await redis_app(
         redis_config=redis_config,
         started_event=started_event,
         shutdown_event=shutdown_event,

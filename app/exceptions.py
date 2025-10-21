@@ -33,3 +33,7 @@ class NoDataError(Exception):
 
 class NotIntegerError(Exception):
     """NotIntegerError"""
+
+
+class ReplicationFailedError(Exception):
+    """ReplicationFailedError"""

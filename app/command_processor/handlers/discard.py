@@ -20,7 +20,7 @@ async def handle_discard(
 
 
 async def handle_discard_no_multy(
-    args: list[str], redis_state: RedisState
+    args: list[str], redis_state: RedisState, connection: Connection
 ) -> RESPType[Any]:
     """Handle DISCARD command outside transaction"""
     return Error("ERR DISCARD without MULTI")
