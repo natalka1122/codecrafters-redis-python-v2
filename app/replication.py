@@ -132,7 +132,7 @@ async def _perform_handshake(
             ),
             "OK",
         ),
-        (Array([BulkString("PSYNC"), BulkString("?"), BulkString("1")]), "FULLRESYNC"),
+        (Array([BulkString("PSYNC"), BulkString("?"), BulkString("-1")]), "FULLRESYNC"),
     ]
 
     for message, expected_reply in messages:
