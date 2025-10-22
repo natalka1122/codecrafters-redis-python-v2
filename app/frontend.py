@@ -104,6 +104,8 @@ async def handle_replica(connection: Connection, redis_state: RedisState) -> Non
     file_dump = FileDump(base64.b64decode(EMPTY_RDB_B64)).to_bytes
     await connection.write(file_dump)
     logger.info(f"{connection.peername}: Sent FileDump")
+    redis_state.replicas[connection.peername] = connection
+
     await connection.closed.wait()
     logger.info(f"{connection.peername}: Replica is done")
 

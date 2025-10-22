@@ -11,10 +11,10 @@ import pytest
 
 from app.const import DEFAULT_PORT, LOCALHOST
 from app.frontend import master_redis
+from app.redis_state import RedisState
 from app.resp.array import Array
 from app.resp.bulk_string import BulkString
 from app.resp.simple_string import SimpleString
-from app.redis_state import RedisState
 
 
 class TestEchoServer:
@@ -109,9 +109,7 @@ class TestEchoServer:
             first_response = await first_reader.read(1024)
             assert first_response == pong_bytes
 
-            second_reader, second_writer = await open_connection(
-                LOCALHOST, DEFAULT_PORT
-            )
+            second_reader, second_writer = await open_connection(LOCALHOST, DEFAULT_PORT)
             second_writer.write(ping_bytes)
             await second_writer.drain()
             # Read response
@@ -125,8 +123,8 @@ class TestEchoServer:
             shutdown_event.set()
             await master_task
 
-        assert await second_reader.read(1024) == b"", (
-            "Expected empty response from closed connection"
-        )
+        assert (
+            await second_reader.read(1024) == b""
+        ), "Expected empty response from closed connection"
         second_writer.close()
         await second_writer.wait_closed()

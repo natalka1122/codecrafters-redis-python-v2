@@ -63,7 +63,7 @@ class ExpiringDict:  # noqa: WPS214
         return await self._lists[key].lpush(values)
 
     def llen(self, key: str) -> int:
-        return len(self._lists[key])
+        return self._lists[key].llen()
 
     def lrange(self, key: str, start_index: int, stop_index: int) -> list[str]:
         the_list: List = self._lists[key]

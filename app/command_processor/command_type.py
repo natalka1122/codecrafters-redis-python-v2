@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class CommandType(Enum):
+class CommandType(StrEnum):
     PING = "PING"
     ECHO = "ECHO"
     GET = "GET"

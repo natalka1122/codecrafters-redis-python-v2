@@ -20,6 +20,7 @@ class RedisState:
             ExpiringDict() if redis_variables is None else redis_variables
         )
         self.connections: dict[str, Connection] = dict()
+        self.replicas: dict[str, Connection] = dict()
 
     @property
     def is_master(self) -> bool:
@@ -44,6 +45,7 @@ class RedisState:
         """Remove and close a connection."""
         peername = connection.peername
 
+        self.replicas.pop(peername, None)
         removed_connection = self.connections.pop(peername, None)
         if removed_connection:
             logger.debug(f"Removed connection {peername}")
