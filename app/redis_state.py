@@ -2,7 +2,7 @@ import asyncio
 from typing import Optional
 
 from app.connection.connection import Connection
-from app.expiring_dict.expiring_dict import ExpiringDict
+from app.storage.storage import Storage
 from app.logging_config import get_logger
 from app.redis_config import RedisConfig
 
@@ -13,11 +13,11 @@ class RedisState:
     def __init__(
         self,
         redis_config: Optional[RedisConfig] = None,
-        redis_variables: Optional[ExpiringDict] = None,
+        redis_variables: Optional[Storage] = None,
     ) -> None:
         self.redis_config: RedisConfig = RedisConfig() if redis_config is None else redis_config
-        self.redis_variables: ExpiringDict = (
-            ExpiringDict() if redis_variables is None else redis_variables
+        self.redis_variables: Storage = (
+            Storage() if redis_variables is None else redis_variables
         )
         self.connections: dict[str, Connection] = dict()
         self.replicas: dict[str, Connection] = dict()

@@ -13,5 +13,5 @@ async def handle_rpush(
     """Handle RPUSH command."""
     if len(args) == 0:
         return Error(f"RPUSH: len(args) = {len(args)} args = {args}")
-    result = await redis_state.redis_variables.rpush(args[0], args[1:])
+    result = redis_state.redis_variables.rpush(args[0], args[1:])
     return Integer(result)

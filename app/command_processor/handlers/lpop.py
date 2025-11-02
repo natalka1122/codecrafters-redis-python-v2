@@ -13,7 +13,7 @@ async def handle_lpop(  # noqa: WPS212
 ) -> RESPType[Any]:
     """Handle LPOP command."""
     if len(args) == 1:
-        result = await redis_state.redis_variables.lpop_one(args[0])
+        result = redis_state.redis_variables.lpop_one(args[0])
         if result is None:
             return NullBulkString("")
         return BulkString(result)
@@ -25,7 +25,7 @@ async def handle_lpop(  # noqa: WPS212
         counter = int(args[1])
     except ValueError:
         return Error(f"LPOP has wrong arguments. args = {args}")
-    results = await redis_state.redis_variables.lpop_many(args[0], counter)
+    results = redis_state.redis_variables.lpop_many(args[0], counter)
     if results is None:
         return NullBulkString("")
     return Array(list(map(BulkString, results)))

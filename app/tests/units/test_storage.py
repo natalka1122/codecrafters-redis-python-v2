@@ -4,15 +4,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.exceptions import ItemNotFoundError
-from app.expiring_dict.expiring_dict import ExpiringDict
+from app.storage.storage import Storage
 
 
 @patch("time.time")
-class TestExpiringDict:  # noqa: WPS214
+class TestStorage:  # noqa: WPS214
     start_time = 10000
 
     def setup_method(self) -> None:
-        self.expiring_dict = ExpiringDict()
+        self.storage = Storage()
 
     def test_set_and_get_eternal(self, get_random_string: Callable[[], str]) -> None:
         """Test basic set and get operations without expiration."""
@@ -20,7 +20,7 @@ class TestExpiringDict:  # noqa: WPS214
         value = get_random_string()
 
         # Set a value without expiration
-        self.expiring_dict.set(key, value)
+        self.storage.set(key, value)
 
         # Should be able to get the value
         self._assert_value_equals(key, value)
@@ -35,7 +35,7 @@ class TestExpiringDict:  # noqa: WPS214
         value = get_random_string()
 
         # Set a value with 5000ms (5 second) expiration
-        self.expiring_dict.set(key, value, expire_set_ms=5000)
+        self.storage.set(key, value, expire_set_ms=5000)
 
         # Move time forward by 3 seconds (not expired yet)
         mock_time.return_value = self.start_time + 3
@@ -53,7 +53,7 @@ class TestExpiringDict:  # noqa: WPS214
         value = get_random_string()
 
         # Set a value with 2000ms (2 second) expiration
-        self.expiring_dict.set(key, value, expire_set_ms=2000)
+        self.storage.set(key, value, expire_set_ms=2000)
 
         # Move time forward by 3 seconds (expired)
         mock_time.return_value = self.start_time + 3
@@ -79,47 +79,43 @@ class TestExpiringDict:  # noqa: WPS214
         value2 = get_random_string()
 
         # First set a value
-        self.expiring_dict.set(key, value1)
+        self.storage.set(key, value1)
         self._assert_value_equals(key, value1)
 
         # Set with zero expiration (should delete)
-        self.expiring_dict.set(key, value2, expire_set_ms=0)
+        self.storage.set(key, value2, expire_set_ms=0)
 
         # Should be gone
         self._assert_key_not_found(key)
 
-    def test_set_with_negative_expiration(
-        self, mock_time: MagicMock, get_random_string: Callable[[], str]
-    ) -> None:
+    def test_set_with_negative_expiration(self, get_random_string: Callable[[], str]) -> None:
         """Test setting with negative expiration (should delete the key)."""
         key = get_random_string()
         value1 = get_random_string()
         value2 = get_random_string()
 
         # First set a value
-        self.expiring_dict.set(key, value1)
+        self.storage.set(key, value1)
         self._assert_value_equals(key, value1)
 
         # Set with negative expiration (should delete)
-        self.expiring_dict.set(key, value2, expire_set_ms=-100)
+        self.storage.set(key, value2, expire_set_ms=-100)
 
         # Should be gone
         self._assert_key_not_found(key)
 
-    def test_overwrite_existing_key_eternal(
-        self, get_random_string: Callable[[], str]
-    ) -> None:
+    def test_overwrite_existing_key_eternal(self, get_random_string: Callable[[], str]) -> None:
         """Test overwriting an existing key without expiration."""
         key = get_random_string()
         value1 = get_random_string()
         value2 = get_random_string()
 
         # Set initial value
-        self.expiring_dict.set(key, value1)
+        self.storage.set(key, value1)
         self._assert_value_equals(key, value1)
 
         # Overwrite with new value
-        self.expiring_dict.set(key, value2)
+        self.storage.set(key, value2)
         self._assert_value_equals(key, value2)
 
     def test_overwrite_expiring_key_with_non_expiring(
@@ -131,10 +127,10 @@ class TestExpiringDict:  # noqa: WPS214
         value2 = get_random_string()
 
         # Set with expiration
-        self.expiring_dict.set(key, value1, expire_set_ms=5000)
+        self.storage.set(key, value1, expire_set_ms=5000)
 
         # Overwrite without expiration
-        self.expiring_dict.set(key, value2)
+        self.storage.set(key, value2)
 
         # Move time way forward
         mock_time.return_value = self.start_time + 100
@@ -153,10 +149,10 @@ class TestExpiringDict:  # noqa: WPS214
         value2 = get_random_string()
 
         # Set without expiration
-        self.expiring_dict.set(key, value1)
+        self.storage.set(key, value1)
 
         # Overwrite with expiration
-        self.expiring_dict.set(key, value2, expire_set_ms=2000)
+        self.storage.set(key, value2, expire_set_ms=2000)
 
         # Should exist before expiration
         mock_time.return_value = self.start_time + 1
@@ -174,23 +170,20 @@ class TestExpiringDict:  # noqa: WPS214
 
         key = get_random_string()
         value = get_random_string()
-
         # Set a key with expiration
-        self.expiring_dict.set(key, value, expire_set_ms=1000)
+        self.storage.set(key, value, expire_set_ms=1000)
 
         # Verify internal state before expiration
-        assert key in self.expiring_dict._items  # pyright: ignore[reportPrivateUsage]
-        assert key in self.expiring_dict._expiration_ms  # pyright: ignore[reportPrivateUsage]
+        assert key in self.storage._strings  # pyright: ignore[reportPrivateUsage]
+        assert self.storage.get(key) == value  # pyright: ignore[reportPrivateUsage]
 
         # Move time past expiration
         mock_time.return_value = self.start_time + 2
-
         # Access should trigger cleanup
         self._assert_key_not_found(key)
 
         # Verify internal state after cleanup
-        assert key not in self.expiring_dict._items  # pyright: ignore[reportPrivateUsage]
-        assert key not in self.expiring_dict._expiration_ms  # pyright: ignore[reportPrivateUsage]
+        assert key not in self.storage._strings  # pyright: ignore[reportPrivateUsage]
 
     def test_boundary_expiration_time(
         self, mock_time: MagicMock, get_random_string: Callable[[], str]
@@ -202,7 +195,7 @@ class TestExpiringDict:  # noqa: WPS214
         value = get_random_string()
 
         # Set with 1000ms expiration
-        self.expiring_dict.set(key, value, expire_set_ms=1000)
+        self.storage.set(key, value, expire_set_ms=1000)
 
         # At exactly expiration time should be expired
         mock_time.return_value = self.start_time + 1
@@ -211,7 +204,7 @@ class TestExpiringDict:  # noqa: WPS214
 
     def _get_value(self, key: str) -> str:
         """Helper method to get value from expiring dict."""
-        return self.expiring_dict.get(key)
+        return self.storage.get(key)
 
     def _assert_value_equals(self, key: str, expected_value: str) -> None:
         """Helper method to assert a key equals expected value."""
