@@ -8,8 +8,6 @@ class List:  # noqa: WPS214
     def __init__(self) -> None:
         self._data: list[str] = []
         self._getters: deque[asyncio.Future[None]] = deque()
-        self._finished = asyncio.Event()
-        self._finished.set()
         self._loop: Optional[asyncio.AbstractEventLoop] = None
 
     def rpush(self, values: list[str]) -> int:
@@ -19,7 +17,6 @@ class List:  # noqa: WPS214
 
     def rpush_one(self, value: str) -> None:
         self._data.append(value)
-        self._finished.clear()
         self._wakeup_next()
 
     def lpush(self, values: list[str]) -> int:
@@ -29,7 +26,6 @@ class List:  # noqa: WPS214
 
     def lpush_one(self, value: str) -> None:
         self._data = [value] + self._data
-        self._finished.clear()
         self._wakeup_next()
 
     def llen(self) -> int:
