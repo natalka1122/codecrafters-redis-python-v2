@@ -18,7 +18,7 @@ from app.resp.base import RESPType
 logger = get_logger(__name__)
 
 
-class Connection:
+class Connection:  # noqa: WPS230
     def __init__(self, reader: StreamReader, writer: StreamWriter) -> None:
         self.closed = Event()
         self.closing = Event()
@@ -34,6 +34,7 @@ class Connection:
         self._closure_task: Task[None] = create_task(
             self._closure_loop(), name="Connection._closure_loop"
         )
+        self.received_bytes = 0
         logger.debug(f"{self}: New connection")
 
     def __repr__(self) -> str:
@@ -55,6 +56,7 @@ class Connection:
         except CancelledError:
             logger.info("Connection.read CancelledError")
             raise
+        self.received_bytes += len(result.to_bytes)
         return result
 
     async def write(self, data: bytes) -> None:

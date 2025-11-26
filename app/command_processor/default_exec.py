@@ -21,6 +21,7 @@ from app.command_processor.handlers.psync import handle_psync
 from app.command_processor.handlers.replconf import (
     handle_replconf_capa,
     handle_replconf_lp,
+    handle_replconf_getack,
 )
 from app.command_processor.handlers.rpush import handle_rpush
 from app.command_processor.handlers.set import handle_set
@@ -63,6 +64,7 @@ async def default_exec(
         CommandType.REPLCONF_LP: handle_replconf_lp,
         CommandType.PSYNC: handle_psync,
         CommandType.MULTI: handle_multi,
+        CommandType.REPLCONF_GETACK: handle_replconf_getack,
     }
 
     handler = handlers.get(command.cmd_type, handle_error)

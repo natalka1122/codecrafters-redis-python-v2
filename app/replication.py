@@ -95,6 +95,7 @@ async def do_replica_error_handled(
     started_event.set()
 
     logger.info("Replication started")
+    connection.received_bytes = 0
     while True:  # noqa: WPS457
         await _perform_communication(connection=connection, redis_state=redis_state)
 
