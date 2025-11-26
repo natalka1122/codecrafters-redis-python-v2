@@ -32,6 +32,7 @@ from app.command_processor.handlers.xread import (
     handle_xread_block,
     handle_xread_streams,
 )
+from app.command_processor.handlers.wait import handle_wait
 from app.connection.connection import Connection
 from app.redis_state import RedisState
 from app.resp.base import RESPType
@@ -65,6 +66,7 @@ async def default_exec(
         CommandType.PSYNC: handle_psync,
         CommandType.MULTI: handle_multi,
         CommandType.REPLCONF_GETACK: handle_replconf_getack,
+        CommandType.WAIT: handle_wait,
     }
 
     handler = handlers.get(command.cmd_type, handle_error)
