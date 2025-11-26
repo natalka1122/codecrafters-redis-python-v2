@@ -19,7 +19,6 @@ async def start_service(
     started_event = asyncio.Event()
     main_task: asyncio.Task[None] = asyncio.create_task(
         service_factory(
-            # name=name,
             redis_state=redis_state,
             started_event=started_event,
             shutdown_event=shutdown_event,
@@ -46,8 +45,9 @@ async def redis_app(
     shutdown_event: asyncio.Event,
     started_event: asyncio.Event,
     redis_config: RedisConfig,
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
-    redis_state = RedisState(redis_config=redis_config)
+    redis_state = RedisState(loop=loop, redis_config=redis_config)
     logger.info(f"redis_state.redis_config = {redis_state.redis_config}")
     tasks: list[asyncio.Task[None]] = [
         await start_service(

@@ -5,10 +5,10 @@ from typing import Optional
 
 
 class List:  # noqa: WPS214
-    def __init__(self) -> None:
+    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._data: list[str] = []
         self._getters: deque[asyncio.Future[None]] = deque()
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._loop = loop
 
     def rpush(self, values: list[str]) -> int:
         for value in values:
@@ -52,7 +52,7 @@ class List:  # noqa: WPS214
 
     async def blpop_one(self, timeout: float) -> Optional[str]:
         while not self._data:  # Spurious wakeups
-            getter = self._create_getter()
+            getter = self._loop.create_future()
             self._getters.append(getter)
             try:
                 await asyncio.wait_for(getter, timeout=timeout if timeout > 0 else None)
@@ -75,11 +75,6 @@ class List:  # noqa: WPS214
         self._cancel_getter(getter)
         if self._data and not getter.cancelled():
             self._wakeup_next()
-
-    def _create_getter(self) -> asyncio.Future[None]:
-        if self._loop is None:
-            self._loop = asyncio.get_event_loop()
-        return self._loop.create_future()
 
     def _wakeup_next(self) -> None:
         """Wake up the next getter (if any) that isn't cancelled"""

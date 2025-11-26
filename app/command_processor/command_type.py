@@ -30,3 +30,16 @@ class CommandType(StrEnum):
     MULTI = "MULTI"
     EXEC = "EXEC"
     DISCARD = "DISCARD"
+
+
+SHOULD_REPLICATE = set(
+    [
+        CommandType.SET,
+        CommandType.INCR,
+        CommandType.EXEC,
+        CommandType.RPUSH,
+        CommandType.LPUSH,
+        CommandType.LPOP,
+        CommandType.XADD,
+    ]
+)

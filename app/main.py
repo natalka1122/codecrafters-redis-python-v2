@@ -20,9 +20,7 @@ def _signal_handler(sig: signal.Signals, shutdown_event: asyncio.Event) -> None:
     shutdown_event.set()
 
 
-def make_signal_handler(
-    sig: signal.Signals, shutdown_event: asyncio.Event
-) -> Callable[[], None]:
+def make_signal_handler(sig: signal.Signals, shutdown_event: asyncio.Event) -> Callable[[], None]:
     return partial(_signal_handler, sig, shutdown_event)
 
 
@@ -56,11 +54,13 @@ async def main() -> None:
     redis_config = parse_args()
     started_event = asyncio.Event()
     shutdown_event = asyncio.Event()
+    loop = asyncio.get_running_loop()
     setup_signal_handlers(shutdown_event)
     await redis_app(
         redis_config=redis_config,
         started_event=started_event,
         shutdown_event=shutdown_event,
+        loop=loop,
     )
 
 

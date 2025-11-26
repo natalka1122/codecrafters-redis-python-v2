@@ -15,6 +15,7 @@ from app.command_processor.handlers.llen import handle_llen
 from app.command_processor.handlers.lpop import handle_lpop
 from app.command_processor.handlers.lpush import handle_lpush
 from app.command_processor.handlers.lrange import handle_lrange
+from app.command_processor.handlers.multi import handle_multi
 from app.command_processor.handlers.ping import handle_ping
 from app.command_processor.handlers.psync import handle_psync
 from app.command_processor.handlers.replconf import (
@@ -61,6 +62,7 @@ async def default_exec(
         CommandType.REPLCONF_CAPA: handle_replconf_capa,
         CommandType.REPLCONF_LP: handle_replconf_lp,
         CommandType.PSYNC: handle_psync,
+        CommandType.MULTI: handle_multi,
     }
 
     handler = handlers.get(command.cmd_type, handle_error)

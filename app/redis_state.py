@@ -12,15 +12,17 @@ logger = get_logger(__name__)
 class RedisState:
     def __init__(
         self,
+        loop: asyncio.AbstractEventLoop,
         redis_config: Optional[RedisConfig] = None,
         redis_variables: Optional[Storage] = None,
     ) -> None:
         self.redis_config: RedisConfig = RedisConfig() if redis_config is None else redis_config
         self.redis_variables: Storage = (
-            Storage() if redis_variables is None else redis_variables
+            Storage(loop) if redis_variables is None else redis_variables
         )
         self.connections: dict[str, Connection] = dict()
         self.replicas: dict[str, Connection] = dict()
+        self.tasks: list[asyncio.Task[None]] = list()
 
     @property
     def is_master(self) -> bool:

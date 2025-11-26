@@ -77,11 +77,18 @@ async def handle_client(  # noqa: WPS217
             data_parsed = await connection.read()
             logger.debug(f"{connection.peername}: Received command {data_parsed}")
             if connection.is_transaction:
-                response = await transaction(data_parsed, redis_state, connection)
+                should_replicate, response = await transaction(data_parsed, redis_state, connection)
             else:
-                response = await processor(data_parsed, redis_state, connection)
+                should_replicate, response = await processor(data_parsed, redis_state, connection)
             await connection.write(response.to_bytes)
             logger.debug(f"{connection.peername}: Sent response {response!r}")
+            if should_replicate:
+                for replica_id in redis_state.replicas:
+                    replica = redis_state.replicas[replica_id]
+                    redis_state.tasks.append(
+                        asyncio.create_task(replica.write(data_parsed.to_bytes))
+                    )
+                    logger.debug(f"Sent command {data_parsed} to replica {replica_id}")
 
     except (ReaderClosedError, WriterClosedError):
         logger.debug(f"{connection.peername}: Client disconnected")

@@ -1,28 +1,32 @@
-from collections import defaultdict
 from typing import Optional
+from asyncio import AbstractEventLoop
 
-from app.exceptions import ItemNotFoundError
+from app.exceptions import ItemNotFoundError, ItemWrongTypeError
 from app.resp.array import Array
 from app.resp.bulk_string import BulkString
 from app.storage.list import List
 from app.storage.stream import Stream
-from app.storage.string import ExpiringString
+from app.storage.string import BaseString, ExpiringString, EternalString
+
+Item = BaseString | List | Stream
 
 
 class Storage:  # noqa: WPS214
-    def __init__(self) -> None:
-        self._strings: dict[str, ExpiringString] = dict()
-        self._lists: defaultdict[str, List] = defaultdict(List)
-        self._streams: defaultdict[str, Stream] = defaultdict(Stream)
+    def __init__(self, loop: AbstractEventLoop) -> None:
+        self._loop = loop
+        self._item: dict[str, Item] = dict()
 
     def get_type(self, key: str) -> str:
-        if key in self._strings:
+        if key not in self._item:  # noqa: WPS204
+            return "none"
+        value = self._item.get(key)
+        if value is None:
+            return "none"
+        if isinstance(value, BaseString):
             return "string"
-        if key in self._lists:
+        if isinstance(value, List):
             return "list"
-        if key in self._streams:
-            return "stream"
-        return "none"
+        return "stream"
 
     def set(
         self,
@@ -30,39 +34,80 @@ class Storage:  # noqa: WPS214
         value: str,
         expire_set_ms: Optional[int] = None,
     ) -> None:
-        try:
-            self._strings[key] = ExpiringString(value, expire_set_ms)
-        except ItemNotFoundError:
-            self._strings.pop(key, None)
+        self.delete(key)
+        if expire_set_ms is None:
+            self._item[key] = EternalString(value)  # noqa: WPS204
+        else:
+            self._item[key] = ExpiringString(
+                value, expire_set_ms=expire_set_ms, loop=self._loop, storage=self, key=key
+            )
 
     def get(self, key: str) -> str:
-        if key not in self._strings:
+        if key not in self._item:
             raise ItemNotFoundError
+        value = self._item[key]
+        if not isinstance(value, BaseString):
+            raise ItemWrongTypeError
 
         try:
-            return self._strings[key].get()
+            return value.get()
         except ItemNotFoundError:
-            self._strings.pop(key, None)
+            self.delete(key)
             raise
 
+    def delete(self, key: str) -> None:
+        if key not in self._item:
+            return
+        value = self._item[key]
+        self._item.pop(key, None)
+        if isinstance(value, ExpiringString):
+            value.cancel_task()
+
     def incr(self, key: str) -> int:
-        if key not in self._strings:
-            self._strings[key] = ExpiringString("0")
-        return self._strings[key].incr()
+        if key not in self._item:
+            self._item[key] = EternalString("1")
+            return 1
+
+        value = self._item[key]
+        if not isinstance(value, BaseString):
+            raise ItemWrongTypeError
+        try:
+            return value.incr()
+        except ItemNotFoundError:
+            self._item[key] = EternalString("1")
+            return 1
 
     def rpush(self, key: str, values: list[str]) -> int:
-        result: int = self._lists[key].rpush(values)
-        return result
+        if key not in self._item:
+            self._item[key] = List(loop=self._loop)
+        value = self._item[key]
+        if not isinstance(value, List):
+            raise ItemWrongTypeError
+        return value.rpush(values)
 
     def lpush(self, key: str, values: list[str]) -> int:
-        result: int = self._lists[key].lpush(values)
-        return result
+        if key not in self._item:
+            self._item[key] = List(loop=self._loop)
+        value = self._item[key]
+        if not isinstance(value, List):
+            raise ItemWrongTypeError
+        return value.lpush(values)
 
     def llen(self, key: str) -> int:
-        return self._lists[key].llen()
+        if key not in self._item:
+            self._item[key] = List(loop=self._loop)
+        value = self._item[key]
+        if not isinstance(value, List):
+            raise ItemWrongTypeError
+        return value.llen()
 
     def lrange(self, key: str, start_index: int, stop_index: int) -> list[str]:
-        the_list: List = self._lists[key]
+        if key not in self._item:
+            self._item[key] = List(loop=self._loop)
+        the_list = self._item[key]
+        if not isinstance(the_list, List):
+            raise ItemWrongTypeError
+
         len_the_list = len(the_list)
         if start_index > len_the_list:
             return []
@@ -82,28 +127,58 @@ class Storage:  # noqa: WPS214
         return result
 
     def lpop_one(self, key: str) -> Optional[str]:
-        return self._lists[key].lpop_one()
+        if key not in self._item:
+            self._item[key] = List(loop=self._loop)
+        value = self._item[key]
+        if not isinstance(value, List):
+            raise ItemWrongTypeError
+        return value.lpop_one()
 
     def lpop_many(self, key: str, count: int = 1) -> Optional[list[str]]:
-        return self._lists[key].lpop_many(count)
+        if key not in self._item:
+            self._item[key] = List(loop=self._loop)
+        value = self._item[key]
+        if not isinstance(value, List):
+            raise ItemWrongTypeError
+        return value.lpop_many(count)
 
     async def blpop(self, key: str, timeout: float) -> Optional[str]:
-        return await self._lists[key].blpop_one(timeout)
+        if key not in self._item:
+            self._item[key] = List(loop=self._loop)
+        value = self._item[key]
+        if not isinstance(value, List):
+            raise ItemWrongTypeError
+        return await value.blpop_one(timeout)
 
     async def xadd(self, stream_name: str, key: str, parameters: list[str]) -> Optional[str]:
-        return await self._streams[stream_name].xadd(key, parameters)
+        if stream_name not in self._item:
+            self._item[stream_name] = Stream()  # noqa: WPS204
+        value = self._item[stream_name]
+        if not isinstance(value, Stream):
+            raise ItemWrongTypeError
+        return await value.xadd(key, parameters)
 
     def xrange(self, stream_name: str, start_id: str, end_id: str) -> Array:
-        return self._streams[stream_name].xrange(start_id, end_id)
+        if stream_name not in self._item:
+            self._item[stream_name] = Stream()
+        value = self._item[stream_name]
+        if not isinstance(value, Stream):
+            raise ItemWrongTypeError
+        return value.xrange(start_id, end_id)
 
     def xread_one_stream(self, stream_name: str, start_id: str) -> Array:
-        return Array(
-            [
-                BulkString(stream_name),
-                self._streams[stream_name].xread_one_stream(start_id),
-            ]
-        )
+        if stream_name not in self._item:
+            self._item[stream_name] = Stream()
+        value = self._item[stream_name]
+        if not isinstance(value, Stream):
+            raise ItemWrongTypeError
+        return Array([BulkString(stream_name), value.xread_one_stream(start_id)])
 
     async def xread_block(self, timeout: int, stream_name: str, start_id_str: str) -> Array:
-        result = await self._streams[stream_name].xread_block(timeout, start_id_str)
+        if stream_name not in self._item:
+            self._item[stream_name] = Stream()
+        value = self._item[stream_name]
+        if not isinstance(value, Stream):
+            raise ItemWrongTypeError
+        result = await value.xread_block(timeout, start_id_str)
         return Array([BulkString(stream_name), result])

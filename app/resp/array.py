@@ -62,14 +62,12 @@ class NullArray(Array):  # noqa: WPS214
         return 0
 
     @classmethod
-    def from_bytes(cls, raw_bytes: bytes) -> tuple[bytes, "Array"]:  # noqa: WPS210
+    def from_bytes(cls, raw_bytes: bytes) -> tuple[bytes, "NullArray"]:  # noqa: WPS210
         target = b"*-1\r\n"
         if len(raw_bytes) < len(target):
             raise NeedMoreBytesError
         if raw_bytes[: len(target)] != target:
-            raise WrongRESPFormatError(
-                f"NullArray.from_bytes(): raw_bytes = {raw_bytes!r}"
-            )
+            raise WrongRESPFormatError(f"NullArray.from_bytes(): raw_bytes = {raw_bytes!r}")
         return raw_bytes[len(target) :], NullArray([])
 
     def _to_bytes(self) -> bytes:

@@ -8,7 +8,6 @@ from app.command_processor.handlers.discard import (
 )
 from app.command_processor.handlers.exec import handle_exec
 from app.command_processor.handlers.multi import (
-    handle_multi,
     handle_multi_inside_transaction,
     handle_queued,
 )
@@ -21,20 +20,16 @@ logger = get_logger(__name__)
 
 
 async def processor(
-    data_resp:  RESPType[Any], redis_state: RedisState, connection: Connection
-) -> RESPType[Any]:
+    data_resp: RESPType[Any], redis_state: RedisState, connection: Connection
+) -> tuple[bool, RESPType[Any]]:
     """Process Redis commands and return appropriate responses."""
     command = Command(data_resp)
-    # TODO: Rewrite later, maybe all normal handlers need connection too
-    # But for now I just patch it
-    if command.cmd_type == CommandType.MULTI:
-        return await handle_multi(command.args, redis_state, connection)
-    return await default_exec(command, redis_state, connection)
+    return command.should_replicate, await default_exec(command, redis_state, connection)
 
 
 async def transaction(
     data_resp: RESPType[Any], redis_state: RedisState, connection: Connection
-) -> RESPType[Any]:
+) -> tuple[bool, RESPType[Any]]:
     """Record transaction"""
     command = Command(data_resp)
     # Direct mapping of command types to handlers
@@ -45,5 +40,4 @@ async def transaction(
     }
 
     handler = handlers.get(command.cmd_type, handle_queued)
-    result = await handler(command, redis_state, connection)
-    return result
+    return command.should_replicate, await handler(command, redis_state, connection)

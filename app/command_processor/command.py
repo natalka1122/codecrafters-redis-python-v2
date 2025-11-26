@@ -1,6 +1,6 @@
 from typing import Any
 
-from app.command_processor.command_type import CommandType
+from app.command_processor.command_type import CommandType, SHOULD_REPLICATE
 from app.resp.array import Array
 from app.resp.base import RESPType
 from app.resp.bulk_string import BulkString
@@ -32,6 +32,7 @@ class Command:
         cmd_type, args = self._parse_command(data_list)
         self._cmd_type = cmd_type
         self._args = args
+        self.should_replicate = cmd_type in SHOULD_REPLICATE
 
     def __str__(self) -> str:
         return f"Command({self._cmd_type.value}, {self._args})"  # noqa: WPS237

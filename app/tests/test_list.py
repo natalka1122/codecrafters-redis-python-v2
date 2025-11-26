@@ -68,7 +68,8 @@ async def redis_server() -> AsyncGenerator[RedisState, None]:
     """Context manager to start and stop a Redis server for testing."""
     shutdown_event = asyncio.Event()
     started_event = asyncio.Event()
-    redis_state = RedisState()
+    loop = asyncio.get_running_loop()
+    redis_state = RedisState(loop=loop)
 
     # Start worker in background
     worker_task: asyncio.Task[None] = asyncio.create_task(

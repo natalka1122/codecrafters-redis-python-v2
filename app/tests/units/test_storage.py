@@ -1,3 +1,4 @@
+import asyncio
 from typing import Callable
 from unittest.mock import MagicMock, patch
 
@@ -12,7 +13,7 @@ class TestStorage:  # noqa: WPS214
     start_time = 10000
 
     def setup_method(self) -> None:
-        self.storage = Storage()
+        self.storage = Storage(loop=asyncio.get_event_loop())
 
     def test_set_and_get_eternal(self, get_random_string: Callable[[], str]) -> None:
         """Test basic set and get operations without expiration."""
@@ -174,7 +175,7 @@ class TestStorage:  # noqa: WPS214
         self.storage.set(key, value, expire_set_ms=1000)
 
         # Verify internal state before expiration
-        assert key in self.storage._strings  # pyright: ignore[reportPrivateUsage]
+        assert key in self.storage._item  # pyright: ignore[reportPrivateUsage]
         assert self.storage.get(key) == value  # pyright: ignore[reportPrivateUsage]
 
         # Move time past expiration
@@ -183,7 +184,7 @@ class TestStorage:  # noqa: WPS214
         self._assert_key_not_found(key)
 
         # Verify internal state after cleanup
-        assert key not in self.storage._strings  # pyright: ignore[reportPrivateUsage]
+        assert key not in self.storage._item  # pyright: ignore[reportPrivateUsage]
 
     def test_boundary_expiration_time(
         self, mock_time: MagicMock, get_random_string: Callable[[], str]
