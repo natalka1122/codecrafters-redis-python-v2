@@ -1,12 +1,13 @@
-from typing import Optional
 from asyncio import AbstractEventLoop
+from contextlib import suppress
+from typing import Iterable, Optional
 
-from app.exceptions import ItemNotFoundError, ItemWrongTypeError
+from app.exceptions import ItemExpiredError, ItemNotFoundError, ItemWrongTypeError
 from app.resp.array import Array
 from app.resp.bulk_string import BulkString
 from app.storage.list import List
 from app.storage.stream import Stream
-from app.storage.string import BaseString, ExpiringString, EternalString
+from app.storage.string import BaseString, EternalString, ExpiringString
 
 Item = BaseString | List | Stream
 
@@ -15,6 +16,9 @@ class Storage:  # noqa: WPS214
     def __init__(self, loop: AbstractEventLoop) -> None:
         self._loop = loop
         self._item: dict[str, Item] = dict()
+
+    def __getitem__(self, key: str) -> Item:
+        return self._item[key]  # noqa: WPS204
 
     def get_type(self, key: str) -> str:
         if key not in self._item:  # noqa: WPS204
@@ -28,19 +32,31 @@ class Storage:  # noqa: WPS214
             return "list"
         return "stream"
 
+    def keys(self) -> Iterable[str]:
+        return self._item.keys()
+
     def set(
         self,
         key: str,
         value: str,
         expire_set_ms: Optional[int] = None,
+        expiration_ms: Optional[int] = None,
     ) -> None:
+        if expire_set_ms is not None and expiration_ms is not None:
+            raise NotImplementedError
         self.delete(key)
-        if expire_set_ms is None:
+        if expire_set_ms is None and expiration_ms is None:
             self._item[key] = EternalString(value)  # noqa: WPS204
         else:
-            self._item[key] = ExpiringString(
-                value, expire_set_ms=expire_set_ms, loop=self._loop, storage=self, key=key
-            )
+            with suppress(ItemExpiredError):
+                self._item[key] = ExpiringString(
+                    value,
+                    expire_set_ms=expire_set_ms,
+                    expiration_ms=expiration_ms,
+                    loop=self._loop,
+                    storage=self,
+                    key=key,
+                )
 
     def get(self, key: str) -> str:
         if key not in self._item:
@@ -182,3 +198,10 @@ class Storage:  # noqa: WPS214
             raise ItemWrongTypeError
         result = await value.xread_block(timeout, start_id_str)
         return Array([BulkString(stream_name), result])
+
+    def update(self, other: object) -> None:
+        if not isinstance(other, Storage):
+            raise TypeError("Expected an instance of Storage")
+        for key in other.keys():
+            self._item.pop(key, None)
+            self._item[key] = other[key]

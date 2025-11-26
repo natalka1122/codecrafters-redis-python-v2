@@ -3,9 +3,9 @@ from __future__ import annotations
 import time
 from abc import abstractmethod
 from asyncio import AbstractEventLoop, TimerHandle
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
-from app.exceptions import ItemNotFoundError, NotIntegerError
+from app.exceptions import ItemExpiredError, ItemNotFoundError, NotIntegerError
 
 if TYPE_CHECKING:
     from app.storage.storage import Storage  # Only imported for type checking
@@ -35,17 +35,27 @@ class EternalString(BaseString):
 
 
 class ExpiringString(BaseString):
-    def __init__(
+    def __init__(  # noqa: WPS211
         self,
         data: str,
-        expire_set_ms: int,
+        expire_set_ms: Optional[int],
+        expiration_ms: Optional[int],
         loop: AbstractEventLoop,
         storage: Storage,
         key: str,
     ) -> None:
-        self._task: TimerHandle = loop.call_later(expire_set_ms, storage.delete, key)
-        self._expiration_ms: int = expire_set_ms + int(time.time() * 1000)
         self._data: str = data
+        now = int(time.time() * 1000)
+        if expire_set_ms is None and expiration_ms is not None:
+            self._expiration_ms: int = expiration_ms
+            expire_set_ms = expiration_ms - now
+            if expire_set_ms <= 0:
+                raise ItemExpiredError
+        elif expire_set_ms is not None and expiration_ms is None:
+            self._expiration_ms = expire_set_ms + now
+        else:
+            raise NotImplementedError
+        self._task: TimerHandle = loop.call_later(expire_set_ms, storage.delete, key)
 
     def get(self) -> str:
         if self.is_expired:

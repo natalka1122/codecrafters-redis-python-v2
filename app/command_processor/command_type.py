@@ -30,6 +30,7 @@ class CommandType(StrEnum):
     MULTI = "MULTI"
     EXEC = "EXEC"
     DISCARD = "DISCARD"
+    KEYS = "KEYS"
 
 
 SHOULD_REPLICATE = set(

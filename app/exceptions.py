@@ -2,8 +2,10 @@
 class ItemNotFoundError(Exception):
     """Raised when the requested item is not found"""
 
+
 class ItemWrongTypeError(Exception):
     """Operation against a key holding the wrong kind of value"""
+
 
 class NeedMoreBytesError(Exception):
     """NeedMoreBytes"""
@@ -39,3 +41,11 @@ class NotIntegerError(Exception):
 
 class ReplicationFailedError(Exception):
     """ReplicationFailedError"""
+
+
+class BadDBFormatError(Exception):
+    """BadDBFormatError"""
+
+
+class ItemExpiredError(Exception):
+    """ItemExpired"""

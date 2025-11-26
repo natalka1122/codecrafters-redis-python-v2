@@ -11,6 +11,7 @@ from app.command_processor.handlers.exec import handle_exec_no_multi
 from app.command_processor.handlers.get import handle_get
 from app.command_processor.handlers.incr import handle_incr
 from app.command_processor.handlers.info import handle_info_replication
+from app.command_processor.handlers.keys import handle_keys
 from app.command_processor.handlers.llen import handle_llen
 from app.command_processor.handlers.lpop import handle_lpop
 from app.command_processor.handlers.lpush import handle_lpush
@@ -68,6 +69,7 @@ async def default_exec(
         CommandType.REPLCONF_GETACK: handle_replconf_getack,
         CommandType.WAIT: handle_wait,
         CommandType.CONFIG_GET: handle_config_get,
+        CommandType.KEYS: handle_keys,
     }
 
     handler = handlers.get(command.cmd_type, handle_error)

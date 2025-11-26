@@ -2,9 +2,10 @@ import asyncio
 from typing import Optional
 
 from app.connection.connection import Connection
-from app.storage.storage import Storage
 from app.logging_config import get_logger
+from app.rdb.binary_io import read_from_file
 from app.redis_config import RedisConfig
+from app.storage.storage import Storage
 
 logger = get_logger(__name__)
 
@@ -23,6 +24,11 @@ class RedisState:
         self.connections: dict[str, Connection] = dict()
         self.replicas: dict[str, Connection] = dict()
         self.tasks: list[asyncio.Task[None]] = list()
+        self.redis_variables.update(
+            read_from_file(
+                dir_name=self.redis_config.dir, dbfilename=self.redis_config.dbfilename, loop=loop
+            )
+        )
 
     @property
     def is_master(self) -> bool:
