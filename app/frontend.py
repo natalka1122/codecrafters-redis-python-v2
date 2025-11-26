@@ -8,7 +8,9 @@ from app.const import EMPTY_RDB_B64, HOST
 from app.exceptions import ReaderClosedError, WriterClosedError
 from app.logging_config import get_logger
 from app.redis_state import RedisState
+from app.resp.array import Array
 from app.resp.base import RESPType
+from app.resp.bulk_string import BulkString
 from app.resp.file_dump import FileDump
 
 logger = get_logger(__name__)
@@ -121,8 +123,24 @@ async def handle_replica(connection: Connection, redis_state: RedisState) -> Non
     logger.info(f"{connection.peername}: Sent FileDump")
     redis_state.replicas[connection.peername] = connection
 
-    await connection.closed.wait()
-    logger.info(f"{connection.peername}: Replica is done")
+    connection.acknowledged_bytes = 0
+    connection.received_bytes = 0
+    connection.sent_bytes = 0
+
+    while True:  # noqa: WPS457
+        response = await connection.read(parser=Array.from_bytes)
+        if (
+            not isinstance(response, Array)  # noqa: WPS222
+            or len(response) != 3
+            or response[0] != BulkString("REPLCONF")
+            or response[1] != BulkString("ACK")
+            or not response[2].data.isdigit()
+        ):
+            logger.error(f"{connection}: Got terribly wrong response for GETACK: {response}")
+        else:
+            connection.acknowledged_bytes = int(response[2].data)
+            connection.got_ack_event.set()
+            connection.got_ack_event.clear()
 
 
 async def _close_connection(connection: Connection, redis_state: RedisState) -> None:

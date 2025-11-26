@@ -13,12 +13,14 @@ from app.command_processor.command import Command
 from app.connection.async_reader import AsyncReaderHandler, ParserType
 from app.connection.async_writer import AsyncWriterHandler
 from app.logging_config import get_logger
+from app.resp.array import Array
 from app.resp.base import RESPType
+from app.resp.bulk_string import BulkString
 
 logger = get_logger(__name__)
 
 
-class Connection:  # noqa: WPS230
+class Connection:  # noqa: WPS214, WPS230
     def __init__(self, reader: StreamReader, writer: StreamWriter) -> None:
         self.closed = Event()
         self.closing = Event()
@@ -35,6 +37,9 @@ class Connection:  # noqa: WPS230
             self._closure_loop(), name="Connection._closure_loop"
         )
         self.received_bytes = 0
+        self.sent_bytes = 0
+        self.acknowledged_bytes = 0
+        self.got_ack_event = Event()
         logger.debug(f"{self}: New connection")
 
     def __repr__(self) -> str:
@@ -65,6 +70,20 @@ class Connection:  # noqa: WPS230
         except CancelledError:
             logger.info("Connection.write CancelledError")
             raise
+        self.sent_bytes += len(data)
+
+    async def getack(self) -> None:
+        target = self.sent_bytes
+        if target <= self.acknowledged_bytes:
+            return
+
+        await self.write(
+            Array([BulkString("REPLCONF"), BulkString("GETACK"), BulkString("*")]).to_bytes
+        )
+        while True:
+            await self.got_ack_event.wait()
+            if target <= self.acknowledged_bytes:
+                return
 
     async def _closure_loop(self) -> None:
         await self.closing.wait()
