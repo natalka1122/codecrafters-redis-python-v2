@@ -20,4 +20,4 @@ async def handle_wait(
 
     if numreplicas == 0:
         return Integer(0)
-    return Integer(-1)
+    return Integer(len(redis_state.replicas))
