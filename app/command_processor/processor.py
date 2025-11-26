@@ -21,15 +21,19 @@ logger = get_logger(__name__)
 
 async def processor(
     data_resp: RESPType[Any], redis_state: RedisState, connection: Connection
-) -> tuple[bool, RESPType[Any]]:
+) -> tuple[bool, bool, RESPType[Any]]:
     """Process Redis commands and return appropriate responses."""
     command = Command(data_resp)
-    return command.should_replicate, await default_exec(command, redis_state, connection)
+    return (
+        command.should_replicate,
+        command.should_ack,
+        await default_exec(command, redis_state, connection),
+    )
 
 
 async def transaction(
     data_resp: RESPType[Any], redis_state: RedisState, connection: Connection
-) -> tuple[bool, RESPType[Any]]:
+) -> tuple[bool, bool, RESPType[Any]]:
     """Record transaction"""
     command = Command(data_resp)
     # Direct mapping of command types to handlers
@@ -40,4 +44,8 @@ async def transaction(
     }
 
     handler = handlers.get(command.cmd_type, handle_queued)
-    return command.should_replicate, await handler(command, redis_state, connection)
+    return (
+        command.should_replicate,
+        command.should_ack,
+        await handler(command, redis_state, connection),
+    )

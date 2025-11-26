@@ -1,9 +1,10 @@
 import asyncio
 
 from app import const
-from app.connection.async_reader import AsyncReaderHandler
-from app.connection.async_writer import AsyncWriterHandler
-from app.exceptions import ReplicationFailedError
+from app.command_processor.processor import processor, transaction
+from app.connection.connection import Connection
+from app.exceptions import ReaderClosedError, ReplicationFailedError, WriterClosedError
+from app.frontend import send_to_replicas
 from app.logging_config import get_logger
 from app.redis_state import RedisState
 from app.resp.array import Array
@@ -43,72 +44,62 @@ async def replica_redis(  # noqa: WPS210
         logger.error(f"{name} Failed to connect after {const.REPLICA_MAX_RETRIES} attempts")
         started_event.set()
         return
-    rw_closing_event = asyncio.Event()
-    async_writer = AsyncWriterHandler(writer=writer, rw_closing_event=rw_closing_event)
-    logger.info(f"{name} {async_writer.sockname}: Connected to {async_writer.peername}")
-    async_reader = AsyncReaderHandler(
-        reader=reader, peername=async_writer.peername, rw_closing_event=rw_closing_event
-    )
+    connection = Connection(reader, writer)
+    logger.info(f"{name} {connection.sockname}: Connected to {connection.peername}")
 
-    closing_event_task: asyncio.Task[None] = asyncio.create_task(
-        closure_loop(rw_closing_event=rw_closing_event, shutdown_event=shutdown_event)
-    )
-    do_replica_task: asyncio.Task[None] = asyncio.create_task(
+    replica_task: asyncio.Task[None] = asyncio.create_task(
         do_replica(
-            async_reader=async_reader,
-            async_writer=async_writer,
-            rw_closing_event=rw_closing_event,
+            connection=connection,
             started_event=started_event,
             redis_state=redis_state,
         )
     )
-    await asyncio.wait([do_replica_task, closing_event_task], return_when=asyncio.FIRST_COMPLETED)
-    started_event.set()
-    rw_closing_event.set()
-    do_replica_task.cancel()
-
-
-async def closure_loop(rw_closing_event: asyncio.Event, shutdown_event: asyncio.Event) -> None:
-    tasks = [
-        asyncio.create_task(rw_closing_event.wait()),
-        asyncio.create_task(shutdown_event.wait()),
-    ]
-    await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-    rw_closing_event.set()
+    shutdown_task = asyncio.create_task(shutdown_event.wait())
+    await asyncio.wait([replica_task, shutdown_task], return_when=asyncio.FIRST_COMPLETED)
+    replica_task.cancel()
 
 
 async def do_replica(
-    async_reader: AsyncReaderHandler,
-    async_writer: AsyncWriterHandler,
-    rw_closing_event: asyncio.Event,
+    connection: Connection,
     started_event: asyncio.Event,
     redis_state: RedisState,
 ) -> None:
+    peername = connection.peername
     try:
-        handshake = await _perform_handshake(
-            async_reader=async_reader, async_writer=async_writer, port=redis_state.redis_config.port
+        await do_replica_error_handled(
+            connection=connection, started_event=started_event, redis_state=redis_state
         )
+    except (ReaderClosedError, WriterClosedError):
+        logger.debug(f"{peername}: Client disconnected")
     except asyncio.CancelledError:
-        logger.info("Handshake cancelled")
-        raise
+        logger.info(f"{peername}: Connection handler cancelled.")
+        raise  # Don't clean up - server will handle it
+    except Exception as e:
+        logger.error(f"{peername}: Error in client handler: {e}")
+
+    logger.info("Closing replication")
+
+
+async def do_replica_error_handled(
+    connection: Connection,
+    started_event: asyncio.Event,
+    redis_state: RedisState,
+) -> None:
+    handshake = await _perform_handshake(connection=connection, port=redis_state.redis_config.port)
     if not handshake:
         logger.info("It is not expected reply, replication failed")
         return
     logger.info("Reading file")
-    file_dump = await async_reader.read(parser=FileDump.from_bytes)
+    file_dump = await connection.read(parser=FileDump.from_bytes)
     logger.debug(f"I have received {file_dump}")
     started_event.set()
-    logger.info("Replication TODO")
 
-    await rw_closing_event.wait()
-    logger.info("Closing replication")
+    logger.info("Replication started")
+    while True:  # noqa: WPS457
+        await _perform_communication(connection=connection, redis_state=redis_state)
 
 
-async def _perform_handshake(
-    async_reader: AsyncReaderHandler,
-    async_writer: AsyncWriterHandler,
-    port: int,
-) -> bool:
+async def _perform_handshake(connection: Connection, port: int) -> bool:
     """Perform Redis replication handshake. Returns True if successful."""
     messages: list[tuple[Array, str]] = [
         (Array([BulkString("PING")]), "PONG"),
@@ -136,8 +127,8 @@ async def _perform_handshake(
     ]
 
     for message, expected_reply in messages:
-        await async_writer.write(message.to_bytes)  # noqa: WPS476
-        reply = await async_reader.read(parser=SimpleString.from_bytes)  # noqa: WPS476
+        await connection.write(message.to_bytes)  # noqa: WPS476
+        reply = await connection.read(parser=SimpleString.from_bytes)  # noqa: WPS476
         logger.debug(f"I have received {reply}")
 
         if not isinstance(reply, SimpleString):
@@ -148,3 +139,22 @@ async def _perform_handshake(
             return False
 
     return True
+
+
+async def _perform_communication(connection: Connection, redis_state: RedisState) -> None:
+    peername = connection.peername
+    data_parsed = await connection.read()
+    logger.debug(f"{peername}: Received command {data_parsed}")
+    if connection.is_transaction:
+        should_replicate, should_ack, response = await transaction(
+            data_parsed, redis_state, connection
+        )
+    else:
+        should_replicate, should_ack, response = await processor(
+            data_parsed, redis_state, connection
+        )
+    if should_ack:
+        await connection.write(response.to_bytes)
+        logger.debug(f"{peername}: Sent response {response!r}")
+    if should_replicate:
+        send_to_replicas(redis_state=redis_state, data_parsed=data_parsed)

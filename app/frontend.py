@@ -1,5 +1,6 @@
 import asyncio
 import base64
+from typing import Any
 
 from app.command_processor.processor import processor, transaction
 from app.connection.connection import Connection
@@ -7,6 +8,7 @@ from app.const import EMPTY_RDB_B64, HOST
 from app.exceptions import ReaderClosedError, WriterClosedError
 from app.logging_config import get_logger
 from app.redis_state import RedisState
+from app.resp.base import RESPType
 from app.resp.file_dump import FileDump
 
 logger = get_logger(__name__)
@@ -64,7 +66,7 @@ async def close_connections(connections: list[Connection]) -> None:
         logger.info(f"Closed all {len(done)} connections")
 
 
-async def handle_client(  # noqa: WPS217
+async def handle_client(  # noqa: WPS213, WPS217
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
     redis_state: RedisState,
@@ -77,18 +79,17 @@ async def handle_client(  # noqa: WPS217
             data_parsed = await connection.read()
             logger.debug(f"{connection.peername}: Received command {data_parsed}")
             if connection.is_transaction:
-                should_replicate, response = await transaction(data_parsed, redis_state, connection)
+                should_replicate, _, response = await transaction(
+                    data_parsed, redis_state, connection
+                )
             else:
-                should_replicate, response = await processor(data_parsed, redis_state, connection)
+                should_replicate, _, response = await processor(
+                    data_parsed, redis_state, connection
+                )
             await connection.write(response.to_bytes)
             logger.debug(f"{connection.peername}: Sent response {response!r}")
             if should_replicate:
-                for replica_id in redis_state.replicas:
-                    replica = redis_state.replicas[replica_id]
-                    redis_state.tasks.append(
-                        asyncio.create_task(replica.write(data_parsed.to_bytes))
-                    )
-                    logger.debug(f"Sent command {data_parsed} to replica {replica_id}")
+                send_to_replicas(redis_state=redis_state, data_parsed=data_parsed)
 
     except (ReaderClosedError, WriterClosedError):
         logger.debug(f"{connection.peername}: Client disconnected")
@@ -102,6 +103,13 @@ async def handle_client(  # noqa: WPS217
         await handle_replica(connection=connection, redis_state=redis_state)
     # Clean up the connection (only reached if not cancelled)
     await _close_connection(connection, redis_state)
+
+
+def send_to_replicas(redis_state: RedisState, data_parsed: RESPType[Any]) -> None:
+    for replica_id in redis_state.replicas:
+        replica = redis_state.replicas[replica_id]
+        redis_state.tasks.append(asyncio.create_task(replica.write(data_parsed.to_bytes)))
+        logger.debug(f"Sent command {data_parsed} to replica {replica_id}")
 
 
 async def handle_replica(connection: Connection, redis_state: RedisState) -> None:

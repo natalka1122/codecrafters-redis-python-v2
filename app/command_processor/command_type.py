@@ -43,3 +43,4 @@ SHOULD_REPLICATE = set(
         CommandType.XADD,
     ]
 )
+SHOULD_ACK = set([CommandType.REPLCONF_GETACK])

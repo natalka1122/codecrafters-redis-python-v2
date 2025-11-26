@@ -7,15 +7,13 @@ from asyncio import (
     create_task,
     wait,
 )
-from typing import Any
+from typing import Any, Optional
 
 from app.command_processor.command import Command
-from app.connection.async_reader import AsyncReaderHandler
+from app.connection.async_reader import AsyncReaderHandler, ParserType
 from app.connection.async_writer import AsyncWriterHandler
 from app.logging_config import get_logger
-from app.resp.array import Array
 from app.resp.base import RESPType
-from app.resp.bulk_string import BulkString
 
 logger = get_logger(__name__)
 
@@ -25,6 +23,7 @@ class Connection:
         self.closed = Event()
         self.closing = Event()
         self._writer = AsyncWriterHandler(writer, rw_closing_event=self.closing)
+        self.sockname = self._writer.sockname
         self.peername = self._writer.peername
         self._reader = AsyncReaderHandler(
             reader, peername=self.peername, rw_closing_event=self.closing
@@ -50,15 +49,13 @@ class Connection:
             self.transaction = []
         self._is_transaction = value
 
-    async def read(self) -> RESPType[Any]:
+    async def read(self, parser: Optional[ParserType] = None) -> RESPType[Any]:
         try:
-            result = await self._reader.read()
+            result = await self._reader.read(parser=parser)
         except CancelledError:
             logger.info("Connection.read CancelledError")
             raise
-        if isinstance(result, Array):
-            return result
-        return Array([BulkString("Got non-array:"), BulkString(str(result))])
+        return result
 
     async def write(self, data: bytes) -> None:
         try:
