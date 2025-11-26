@@ -1,9 +1,9 @@
-# flake8: noqa
 from typing import Any
 
 from app.command_processor.command import Command
 from app.command_processor.command_type import CommandType
 from app.command_processor.handlers.blpop import handle_blpop
+from app.command_processor.handlers.config import handle_config_get
 from app.command_processor.handlers.discard import handle_discard_no_multy
 from app.command_processor.handlers.echo import handle_echo
 from app.command_processor.handlers.error import handle_error
@@ -20,19 +20,19 @@ from app.command_processor.handlers.ping import handle_ping
 from app.command_processor.handlers.psync import handle_psync
 from app.command_processor.handlers.replconf import (
     handle_replconf_capa,
-    handle_replconf_lp,
     handle_replconf_getack,
+    handle_replconf_lp,
 )
 from app.command_processor.handlers.rpush import handle_rpush
 from app.command_processor.handlers.set import handle_set
 from app.command_processor.handlers.type import handle_type
+from app.command_processor.handlers.wait import handle_wait
 from app.command_processor.handlers.xadd import handle_xadd
 from app.command_processor.handlers.xrange import handle_xrange
 from app.command_processor.handlers.xread import (
     handle_xread_block,
     handle_xread_streams,
 )
-from app.command_processor.handlers.wait import handle_wait
 from app.connection.connection import Connection
 from app.redis_state import RedisState
 from app.resp.base import RESPType
@@ -67,6 +67,7 @@ async def default_exec(
         CommandType.MULTI: handle_multi,
         CommandType.REPLCONF_GETACK: handle_replconf_getack,
         CommandType.WAIT: handle_wait,
+        CommandType.CONFIG_GET: handle_config_get,
     }
 
     handler = handlers.get(command.cmd_type, handle_error)
