@@ -46,4 +46,5 @@ class SortedSet:
         result = self._item_dict.pop(member, None)
         if result is None:
             return 0
+        self._item_list.remove(member)
         return 1
