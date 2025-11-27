@@ -278,3 +278,18 @@ class Storage:  # noqa: WPS214
         lat1d, lon1d = self.geopos(key, member1)
         lat2d, lon2d = self.geopos(key, member2)
         return geohashGetDistance(lon1d, lat1d, lon2d, lat2d)
+
+    def geosearch(  # noqa: WPS210
+        self, key: str, longitude: float, latitude: float, distance: float
+    ) -> list[str]:
+        result: list[str] = []
+        try:
+            locations = self.zrange(key, 0, -1)
+        except NoKeyError:
+            return []
+        for location in locations:
+            lat2d, lon2d = self.geopos(key, location)
+            current_distance = geohashGetDistance(longitude, latitude, lon2d, lat2d)
+            if current_distance <= distance:
+                result.append(location)
+        return result
