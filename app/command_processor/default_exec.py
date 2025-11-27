@@ -19,6 +19,7 @@ from app.command_processor.handlers.lrange import handle_lrange
 from app.command_processor.handlers.multi import handle_multi
 from app.command_processor.handlers.ping import handle_ping
 from app.command_processor.handlers.psync import handle_psync
+from app.command_processor.handlers.publish import handle_publish
 from app.command_processor.handlers.replconf import (
     handle_replconf_capa,
     handle_replconf_getack,
@@ -26,7 +27,9 @@ from app.command_processor.handlers.replconf import (
 )
 from app.command_processor.handlers.rpush import handle_rpush
 from app.command_processor.handlers.set import handle_set
+from app.command_processor.handlers.subscribe import handle_subscribe
 from app.command_processor.handlers.type import handle_type
+from app.command_processor.handlers.unsubscribe import handle_unsubscribe
 from app.command_processor.handlers.wait import handle_wait
 from app.command_processor.handlers.xadd import handle_xadd
 from app.command_processor.handlers.xrange import handle_xrange
@@ -70,6 +73,9 @@ async def default_exec(
         CommandType.WAIT: handle_wait,
         CommandType.CONFIG_GET: handle_config_get,
         CommandType.KEYS: handle_keys,
+        CommandType.SUBSCRIBE: handle_subscribe,
+        CommandType.UNSUBSCRIBE: handle_unsubscribe,
+        CommandType.PUBLISH: handle_publish,
     }
 
     handler = handlers.get(command.cmd_type, handle_error)

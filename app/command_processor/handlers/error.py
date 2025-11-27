@@ -13,3 +13,10 @@ async def handle_error(
 ) -> RESPType[Any]:
     """Handle ERROR command."""
     return Error(f"{args}")
+
+
+async def handle_error_inside_subscription(
+    args: list[str], redis_state: RedisState, connection: Connection
+) -> RESPType[Any]:
+    """Handle error command inside subcribed mode"""
+    return Error("ERR Can't execute ''")

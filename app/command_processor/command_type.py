@@ -31,6 +31,9 @@ class CommandType(StrEnum):
     EXEC = "EXEC"
     DISCARD = "DISCARD"
     KEYS = "KEYS"
+    SUBSCRIBE = "SUBSCRIBE"
+    UNSUBSCRIBE = "UNSUBSCRIBE"
+    PUBLISH = "PUBLISH"
 
 
 SHOULD_REPLICATE = set(

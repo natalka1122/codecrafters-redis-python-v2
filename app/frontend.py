@@ -2,7 +2,7 @@ import asyncio
 import base64
 from typing import Any
 
-from app.command_processor.processor import processor, transaction
+from app.command_processor.processor import processor, subscription, transaction
 from app.connection.connection import Connection
 from app.const import EMPTY_RDB_B64, HOST
 from app.exceptions import ReaderClosedError, WriterClosedError
@@ -68,7 +68,7 @@ async def close_connections(connections: list[Connection]) -> None:
         logger.info(f"Closed all {len(done)} connections")
 
 
-async def handle_client(  # noqa: WPS213, WPS217
+async def handle_client(  # noqa: WPS213, WPS217, WPS231
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
     redis_state: RedisState,
@@ -82,6 +82,10 @@ async def handle_client(  # noqa: WPS213, WPS217
             logger.debug(f"{connection.peername}: Received command {data_parsed}")
             if connection.is_transaction:
                 should_replicate, _, response = await transaction(
+                    data_parsed, redis_state, connection
+                )
+            elif connection.is_subscribed:
+                should_replicate, _, response = await subscription(
                     data_parsed, redis_state, connection
                 )
             else:

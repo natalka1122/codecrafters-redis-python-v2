@@ -40,6 +40,7 @@ class Connection:  # noqa: WPS214, WPS230
         self.sent_bytes = 0
         self.acknowledged_bytes = 0
         self.got_ack_event = Event()
+        self.is_subscribed = False
         logger.debug(f"{self}: New connection")
 
     def __repr__(self) -> str:
