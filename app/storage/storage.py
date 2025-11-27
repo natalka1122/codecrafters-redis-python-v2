@@ -9,6 +9,8 @@ from app.exceptions import (
     NoDataError,
     NoKeyError,
 )
+from app.geocode.decode import decode
+from app.geocode.distance import geohashGetDistance
 from app.resp.array import Array
 from app.resp.bulk_string import BulkString
 from app.storage.list import List
@@ -37,7 +39,7 @@ class Storage:  # noqa: WPS214
             return "string"
         if isinstance(value, List):
             return "list"
-        if isinstance(value, SortedSet):
+        if isinstance(value, SortedSet):  # noqa: WPS204
             return "zset"
         return "stream"
 
@@ -262,3 +264,17 @@ class Storage:  # noqa: WPS214
         if not isinstance(value, SortedSet):
             raise ItemWrongTypeError
         return value.zrem(member)
+
+    def geopos(self, key: str, member: str) -> tuple[float, float]:
+        if key not in self._item:
+            raise NoKeyError
+        value = self._item[key]
+        if not isinstance(value, SortedSet):
+            raise ItemWrongTypeError
+        score = int(self.zscore(key, member))
+        return decode(score)
+
+    def geodist(self, key: str, member1: str, member2: str) -> float:
+        lat1d, lon1d = self.geopos(key, member1)
+        lat2d, lon2d = self.geopos(key, member2)
+        return geohashGetDistance(lon1d, lat1d, lon2d, lat2d)

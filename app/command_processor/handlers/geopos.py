@@ -2,7 +2,6 @@ from typing import Any
 
 from app.connection.connection import Connection
 from app.exceptions import ItemWrongTypeError, NoDataError, NoKeyError
-from app.geocode.decode import decode
 from app.redis_state import RedisState
 from app.resp.array import Array, NullArray
 from app.resp.base import RESPType
@@ -20,13 +19,12 @@ async def handle_geopos(  # noqa: WPS210
     result: list[Array] = []
     for member in args[1:]:
         try:
-            score = int(redis_state.redis_variables.zscore(key, member))
+            latitude, longitude = redis_state.redis_variables.geopos(key, member)
         except ItemWrongTypeError:
             return Error("WRONGTYPE Operation against a key holding the wrong kind of value")
         except (NoDataError, NoKeyError):
             result.append(NullArray([]))
-            continue
-        latitude, longitude = decode(score)
-        item = [BulkString(str(longitude)), BulkString(str(latitude))]
-        result.append(Array(item))
+        else:
+            item = [BulkString(str(longitude)), BulkString(str(latitude))]
+            result.append(Array(item))
     return Array(result)
