@@ -34,6 +34,12 @@ class CommandType(StrEnum):
     SUBSCRIBE = "SUBSCRIBE"
     UNSUBSCRIBE = "UNSUBSCRIBE"
     PUBLISH = "PUBLISH"
+    ZADD = "ZADD"
+    ZRANK = "ZRANK"
+    ZRANGE = "ZRANGE"
+    ZCARD = "ZCARD"
+    ZSCORE = "ZSCORE"
+    ZREM = "ZREM"
 
 
 SHOULD_REPLICATE = set(
@@ -45,6 +51,8 @@ SHOULD_REPLICATE = set(
         CommandType.LPUSH,
         CommandType.LPOP,
         CommandType.XADD,
+        CommandType.ZADD,
+        CommandType.ZREM,
     ]
 )
 SHOULD_ACK = set([CommandType.REPLCONF_GETACK])

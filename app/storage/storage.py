@@ -6,10 +6,11 @@ from app.exceptions import ItemExpiredError, ItemNotFoundError, ItemWrongTypeErr
 from app.resp.array import Array
 from app.resp.bulk_string import BulkString
 from app.storage.list import List
+from app.storage.sorted_set import SortedSet
 from app.storage.stream import Stream
 from app.storage.string import BaseString, EternalString, ExpiringString
 
-Item = BaseString | List | Stream
+Item = BaseString | List | Stream | SortedSet
 
 
 class Storage:  # noqa: WPS214
@@ -20,7 +21,7 @@ class Storage:  # noqa: WPS214
     def __getitem__(self, key: str) -> Item:
         return self._item[key]  # noqa: WPS204
 
-    def get_type(self, key: str) -> str:
+    def get_type(self, key: str) -> str:  # noqa: WPS212
         if key not in self._item:  # noqa: WPS204
             return "none"
         value = self._item.get(key)
@@ -30,6 +31,8 @@ class Storage:  # noqa: WPS214
             return "string"
         if isinstance(value, List):
             return "list"
+        if isinstance(value, SortedSet):
+            return "zset"
         return "stream"
 
     def keys(self) -> Iterable[str]:
@@ -205,3 +208,11 @@ class Storage:  # noqa: WPS214
         for key in other.keys():
             self._item.pop(key, None)
             self._item[key] = other[key]
+
+    def zadd(self, key: str, score: float, member: str) -> int:
+        if key not in self._item:
+            self._item[key] = SortedSet()
+        value = self._item[key]
+        if not isinstance(value, SortedSet):
+            raise ItemWrongTypeError
+        return value.zadd(score, member)

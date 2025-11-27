@@ -45,6 +45,12 @@ from app.command_processor.handlers.xread import (
     handle_xread_block,
     handle_xread_streams,
 )
+from app.command_processor.handlers.zadd import handle_zadd
+from app.command_processor.handlers.zcard import handle_zcard
+from app.command_processor.handlers.zrange import handle_zrange
+from app.command_processor.handlers.zrank import handle_zrank
+from app.command_processor.handlers.zrem import handle_zrem
+from app.command_processor.handlers.zscore import handle_zscore
 from app.connection.connection import Connection
 from app.redis_state import RedisState
 from app.resp.base import RESPType
@@ -88,6 +94,12 @@ DEFAULT_HANDLERS: Mapping[CommandType, ArgsHandler] = MappingProxyType(
         CommandType.SUBSCRIBE: handle_subscribe,
         CommandType.UNSUBSCRIBE: handle_unsubscribe,
         CommandType.PUBLISH: handle_publish,
+        CommandType.ZADD: handle_zadd,
+        CommandType.ZRANK: handle_zrank,
+        CommandType.ZRANGE: handle_zrange,
+        CommandType.ZCARD: handle_zcard,
+        CommandType.ZSCORE: handle_zscore,
+        CommandType.ZREM: handle_zrem,
     }
 )
 
