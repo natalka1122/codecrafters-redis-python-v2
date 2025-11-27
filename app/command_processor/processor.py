@@ -5,10 +5,12 @@ from app.command_processor.const_handlers import (
     DEFAULT_HANDLERS,
     SUBSCRIPTION_HANDLERS,
     TRANSACTION_HANDLERS,
+    UNAUTHENTICATED_HANDLERS,
 )
 from app.command_processor.handlers.error import (
     handle_command_error_inside_subscription,
     handle_error,
+    handle_error_unauthenticated,
 )
 from app.command_processor.handlers.multi import handle_command_queued
 from app.connection.connection import Connection
@@ -17,6 +19,15 @@ from app.redis_state import RedisState
 from app.resp.base import RESPType
 
 logger = get_logger(__name__)
+
+
+async def unauthenticated(
+    data_resp: RESPType[Any], redis_state: RedisState, connection: Connection
+) -> tuple[bool, bool, RESPType[Any]]:
+    command = Command(data_resp)
+    handler = UNAUTHENTICATED_HANDLERS.get(command.cmd_type, handle_error_unauthenticated)
+    result = await handler(command.args, redis_state=redis_state, connection=connection)
+    return (command.should_replicate, command.should_ack, result)
 
 
 async def processor(

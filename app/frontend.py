@@ -2,9 +2,14 @@ import asyncio
 import base64
 from typing import Any
 
-from app.command_processor.processor import processor, subscription, transaction
+from app.command_processor.processor import (
+    processor,
+    subscription,
+    transaction,
+    unauthenticated,
+)
 from app.connection.connection import Connection
-from app.const import EMPTY_RDB_B64, HOST
+from app.const import DEFAULT_USERNAME, EMPTY_RDB_B64, HOST
 from app.exceptions import ReaderClosedError, WriterClosedError
 from app.logging_config import get_logger
 from app.redis_state import RedisState
@@ -12,6 +17,7 @@ from app.resp.array import Array
 from app.resp.base import RESPType
 from app.resp.bulk_string import BulkString
 from app.resp.file_dump import FileDump
+from app.user import Flags
 
 logger = get_logger(__name__)
 
@@ -73,14 +79,21 @@ async def handle_client(  # noqa: WPS213, WPS217, WPS231
     writer: asyncio.StreamWriter,
     redis_state: RedisState,
 ) -> None:
-    connection = redis_state.add_new_connection(reader=reader, writer=writer)
+    is_authenticated = Flags.NOPASS in redis_state.users[DEFAULT_USERNAME].flags
+    connection = redis_state.add_new_connection(
+        reader=reader, writer=writer, is_authenticated=is_authenticated
+    )
     logger.debug(f"{connection.peername}: New connection")
 
     try:
         while not connection.is_replica:  # noqa: WPS457
             data_parsed = await connection.read()
             logger.debug(f"{connection.peername}: Received command {data_parsed}")
-            if connection.is_transaction:
+            if not connection.is_authenticated:  # noqa: WPS504
+                should_replicate, _, response = await unauthenticated(
+                    data_parsed, redis_state, connection
+                )
+            elif connection.is_transaction:
                 should_replicate, _, response = await transaction(
                     data_parsed, redis_state, connection
                 )

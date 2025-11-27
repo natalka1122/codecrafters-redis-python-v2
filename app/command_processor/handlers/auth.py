@@ -19,5 +19,6 @@ async def handle_auth(
     user = redis_state.users.get(username)
     if user is not None:
         if Flags.NOPASS in user.flags or password_hashed in user.passwords:
+            connection.is_authenticated = True
             return SimpleString("OK")
     return Error("WRONGPASS invalid username-password pair or user is disabled.")

@@ -44,7 +44,7 @@ async def replica_redis(  # noqa: WPS210
         logger.error(f"{name} Failed to connect after {const.REPLICA_MAX_RETRIES} attempts")
         started_event.set()
         return
-    connection = Connection(reader, writer)
+    connection = Connection(reader, writer, is_authenticated=True)
     logger.info(f"{name} {connection.sockname}: Connected to {connection.peername}")
 
     replica_task: asyncio.Task[None] = asyncio.create_task(

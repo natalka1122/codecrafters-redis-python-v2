@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 
 
 class Connection:  # noqa: WPS214, WPS230
-    def __init__(self, reader: StreamReader, writer: StreamWriter) -> None:
+    def __init__(self, reader: StreamReader, writer: StreamWriter, is_authenticated: bool) -> None:
         self.closed = Event()
         self.closing = Event()
         self._writer = AsyncWriterHandler(writer, rw_closing_event=self.closing)
@@ -43,6 +43,7 @@ class Connection:  # noqa: WPS214, WPS230
         self.got_ack_event = Event()
         self.is_subscribed = False
         self.user = DEFAULT_USERNAME
+        self.is_authenticated = is_authenticated
         logger.debug(f"{self}: New connection")
 
     def __repr__(self) -> str:

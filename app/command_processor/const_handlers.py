@@ -136,3 +136,9 @@ SUBSCRIPTION_HANDLERS: Mapping[CommandType, ArgsHandler] = MappingProxyType(
         CommandType.PING: handle_ping_inside_subscription,
     }
 )
+
+UNAUTHENTICATED_HANDLERS: Mapping[CommandType, ArgsHandler] = MappingProxyType(
+    {
+        CommandType.AUTH: handle_auth,
+    }
+)

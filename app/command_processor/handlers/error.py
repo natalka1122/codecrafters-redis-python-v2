@@ -24,3 +24,10 @@ async def handle_command_error_inside_subscription(
         f"ERR Can't execute '{command.cmd_type}': "
         + "only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context"
     )
+
+
+async def handle_error_unauthenticated(
+    args: list[str], redis_state: RedisState, connection: Connection
+) -> RESPType[Any]:
+    """Handle ERROR command."""
+    return Error("NOAUTH Authentication required.")

@@ -40,9 +40,9 @@ class RedisState:  # noqa: WPS230
         return len(self.redis_config.replicaof) == 0
 
     def add_new_connection(
-        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, is_authenticated: bool
     ) -> Connection:
-        connection = Connection(reader=reader, writer=writer)
+        connection = Connection(reader=reader, writer=writer, is_authenticated=is_authenticated)
         peername = connection.peername
 
         # Handle potential duplicate connections
