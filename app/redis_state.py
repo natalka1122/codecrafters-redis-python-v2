@@ -2,16 +2,18 @@ import asyncio
 from typing import Optional
 
 from app.connection.connection import Connection
+from app.const import DEFAULT_USERNAME
 from app.logging_config import get_logger
+from app.pubsub import PubSub
 from app.rdb.binary_io import read_from_file
 from app.redis_config import RedisConfig
 from app.storage.storage import Storage
-from app.pubsub import PubSub
+from app.user import User
 
 logger = get_logger(__name__)
 
 
-class RedisState:
+class RedisState:  # noqa: WPS230
     def __init__(
         self,
         loop: asyncio.AbstractEventLoop,
@@ -31,6 +33,7 @@ class RedisState:
                 dir_name=self.redis_config.dir, dbfilename=self.redis_config.dbfilename, loop=loop
             )
         )
+        self.users: dict[str, User] = {DEFAULT_USERNAME: User()}
 
     @property
     def is_master(self) -> bool:

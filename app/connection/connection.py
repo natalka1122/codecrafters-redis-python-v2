@@ -12,6 +12,7 @@ from typing import Any, Optional
 from app.command_processor.command import Command
 from app.connection.async_reader import AsyncReaderHandler, ParserType
 from app.connection.async_writer import AsyncWriterHandler
+from app.const import DEFAULT_USERNAME
 from app.logging_config import get_logger
 from app.resp.array import Array
 from app.resp.base import RESPType
@@ -41,6 +42,7 @@ class Connection:  # noqa: WPS214, WPS230
         self.acknowledged_bytes = 0
         self.got_ack_event = Event()
         self.is_subscribed = False
+        self.user = DEFAULT_USERNAME
         logger.debug(f"{self}: New connection")
 
     def __repr__(self) -> str:
