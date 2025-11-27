@@ -2,7 +2,12 @@ from asyncio import AbstractEventLoop
 from contextlib import suppress
 from typing import Iterable, Optional
 
-from app.exceptions import ItemExpiredError, ItemNotFoundError, ItemWrongTypeError
+from app.exceptions import (
+    ItemExpiredError,
+    ItemNotFoundError,
+    ItemWrongTypeError,
+    NoDataError,
+)
 from app.resp.array import Array
 from app.resp.bulk_string import BulkString
 from app.storage.list import List
@@ -216,3 +221,11 @@ class Storage:  # noqa: WPS214
         if not isinstance(value, SortedSet):
             raise ItemWrongTypeError
         return value.zadd(score, member)
+
+    def zrank(self, key: str, member: str) -> int:
+        if key not in self._item:
+            raise NoDataError
+        value = self._item[key]
+        if not isinstance(value, SortedSet):
+            raise ItemWrongTypeError
+        return value.zrank(member)
