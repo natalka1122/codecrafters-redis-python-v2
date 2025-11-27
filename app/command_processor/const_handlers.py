@@ -2,6 +2,12 @@ from types import MappingProxyType
 from typing import Any, Mapping, Protocol
 
 from app.command_processor.command_type import CommandType
+from app.command_processor.handlers.acl import (
+    handle_acl_getuser,
+    handle_acl_setuser,
+    handle_acl_whoami,
+)
+from app.command_processor.handlers.auth import handle_auth
 from app.command_processor.handlers.blpop import handle_blpop
 from app.command_processor.handlers.config import handle_config_get
 from app.command_processor.handlers.discard import (
@@ -108,6 +114,10 @@ DEFAULT_HANDLERS: Mapping[CommandType, ArgsHandler] = MappingProxyType(
         CommandType.GEOPOS: handle_geopos,
         CommandType.GEODIST: handle_geodist,
         CommandType.GEOSEARCH: handle_geosearch,
+        CommandType.ACL_WHOAMI: handle_acl_whoami,
+        CommandType.ACL_GETUSER: handle_acl_getuser,
+        CommandType.ACL_SETUSER: handle_acl_setuser,
+        CommandType.AUTH: handle_auth,
     }
 )
 
