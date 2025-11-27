@@ -1,21 +1,16 @@
 from typing import Any
 
 from app.command_processor.command import Command
-from app.command_processor.command_type import CommandType
-from app.command_processor.default_exec import default_exec
-from app.command_processor.handlers.discard import (
-    handle_discard,
+from app.command_processor.const_handlers import (
+    DEFAULT_HANDLERS,
+    SUBSCRIPTION_HANDLERS,
+    TRANSACTION_HANDLERS,
 )
-from app.command_processor.handlers.error import handle_error_inside_subscription
-from app.command_processor.handlers.exec import handle_exec
-from app.command_processor.handlers.multi import (
-    handle_multi_inside_transaction,
-    handle_queued,
+from app.command_processor.handlers.error import (
+    handle_command_error_inside_subscription,
+    handle_error,
 )
-from app.command_processor.handlers.ping import handle_ping_inside_subscription
-from app.command_processor.handlers.publish import handle_publish
-from app.command_processor.handlers.subscribe import handle_subscribe
-from app.command_processor.handlers.unsubscribe import handle_unsubscribe
+from app.command_processor.handlers.multi import handle_command_queued
 from app.connection.connection import Connection
 from app.logging_config import get_logger
 from app.redis_state import RedisState
@@ -29,11 +24,9 @@ async def processor(
 ) -> tuple[bool, bool, RESPType[Any]]:
     """Process Redis commands and return appropriate responses."""
     command = Command(data_resp)
-    return (
-        command.should_replicate,
-        command.should_ack,
-        await default_exec(command, redis_state, connection),
-    )
+    handler = DEFAULT_HANDLERS.get(command.cmd_type, handle_error)
+    result = await handler(command.args, redis_state=redis_state, connection=connection)
+    return (command.should_replicate, command.should_ack, result)
 
 
 async def transaction(
@@ -41,18 +34,13 @@ async def transaction(
 ) -> tuple[bool, bool, RESPType[Any]]:
     """Record transaction"""
     command = Command(data_resp)
-    handlers = {
-        CommandType.MULTI: handle_multi_inside_transaction,
-        CommandType.EXEC: handle_exec,
-        CommandType.DISCARD: handle_discard,
-    }
 
-    handler = handlers.get(command.cmd_type, handle_queued)
-    return (
-        command.should_replicate,
-        command.should_ack,
-        await handler(command, redis_state, connection),
-    )
+    handler = TRANSACTION_HANDLERS.get(command.cmd_type, None)
+    if handler is None:
+        result = await handle_command_queued(command, redis_state, connection)
+    else:
+        result = await handler(command.args, redis_state, connection)
+    return (command.should_replicate, command.should_ack, result)
 
 
 async def subscription(
@@ -60,16 +48,10 @@ async def subscription(
 ) -> tuple[bool, bool, RESPType[Any]]:
     """Subscribed mode"""
     command = Command(data_resp)
-    handlers = {
-        CommandType.SUBSCRIBE: handle_subscribe,
-        CommandType.UNSUBSCRIBE: handle_unsubscribe,
-        CommandType.PUBLISH: handle_publish,
-        CommandType.PING: handle_ping_inside_subscription,
-    }
 
-    handler = handlers.get(command.cmd_type, handle_error_inside_subscription)
-    return (
-        command.should_replicate,
-        command.should_ack,
-        await handler(command.args, redis_state, connection),
-    )
+    handler = SUBSCRIPTION_HANDLERS.get(command.cmd_type, None)
+    if handler is None:
+        result = await handle_command_error_inside_subscription(command, redis_state, connection)
+    else:
+        result = await handler(command.args, redis_state, connection)
+    return (command.should_replicate, command.should_ack, result)

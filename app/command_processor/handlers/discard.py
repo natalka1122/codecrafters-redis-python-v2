@@ -1,6 +1,5 @@
 from typing import Any
 
-from app.command_processor.command import Command
 from app.connection.connection import Connection
 from app.logging_config import get_logger
 from app.redis_state import RedisState
@@ -12,7 +11,7 @@ logger = get_logger(__name__)
 
 
 async def handle_discard(
-    command: Command, redis_state: RedisState, connection: Connection
+    args: list[str], redis_state: RedisState, connection: Connection
 ) -> RESPType[Any]:
     """Handle DISCARD command."""
     connection.is_transaction = False

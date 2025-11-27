@@ -1,13 +1,15 @@
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Mapping, Protocol
 
-from app.command_processor.command import Command
 from app.command_processor.command_type import CommandType
 from app.command_processor.handlers.blpop import handle_blpop
 from app.command_processor.handlers.config import handle_config_get
-from app.command_processor.handlers.discard import handle_discard_no_multy
+from app.command_processor.handlers.discard import (
+    handle_discard,
+    handle_discard_no_multy,
+)
 from app.command_processor.handlers.echo import handle_echo
-from app.command_processor.handlers.error import handle_error
-from app.command_processor.handlers.exec import handle_exec_no_multi
+from app.command_processor.handlers.exec import handle_exec, handle_exec_no_multi
 from app.command_processor.handlers.get import handle_get
 from app.command_processor.handlers.incr import handle_incr
 from app.command_processor.handlers.info import handle_info_replication
@@ -16,8 +18,14 @@ from app.command_processor.handlers.llen import handle_llen
 from app.command_processor.handlers.lpop import handle_lpop
 from app.command_processor.handlers.lpush import handle_lpush
 from app.command_processor.handlers.lrange import handle_lrange
-from app.command_processor.handlers.multi import handle_multi
-from app.command_processor.handlers.ping import handle_ping
+from app.command_processor.handlers.multi import (
+    handle_multi,
+    handle_multi_inside_transaction,
+)
+from app.command_processor.handlers.ping import (
+    handle_ping,
+    handle_ping_inside_subscription,
+)
 from app.command_processor.handlers.psync import handle_psync
 from app.command_processor.handlers.publish import handle_publish
 from app.command_processor.handlers.replconf import (
@@ -42,10 +50,14 @@ from app.redis_state import RedisState
 from app.resp.base import RESPType
 
 
-async def default_exec(
-    command: Command, redis_state: RedisState, connection: Connection
-) -> RESPType[Any]:
-    handlers = {
+class ArgsHandler(Protocol):
+    async def __call__(
+        self, args: list[str], redis_state: RedisState, connection: Connection
+    ) -> RESPType[Any]: ...
+
+
+DEFAULT_HANDLERS: Mapping[CommandType, ArgsHandler] = MappingProxyType(
+    {
         CommandType.PING: handle_ping,
         CommandType.ECHO: handle_echo,
         CommandType.GET: handle_get,
@@ -77,6 +89,20 @@ async def default_exec(
         CommandType.UNSUBSCRIBE: handle_unsubscribe,
         CommandType.PUBLISH: handle_publish,
     }
+)
 
-    handler = handlers.get(command.cmd_type, handle_error)
-    return await handler(command.args, redis_state=redis_state, connection=connection)
+TRANSACTION_HANDLERS: Mapping[CommandType, ArgsHandler] = MappingProxyType(
+    {
+        CommandType.MULTI: handle_multi_inside_transaction,
+        CommandType.EXEC: handle_exec,
+        CommandType.DISCARD: handle_discard,
+    }
+)
+SUBSCRIPTION_HANDLERS: Mapping[CommandType, ArgsHandler] = MappingProxyType(
+    {
+        CommandType.SUBSCRIBE: handle_subscribe,
+        CommandType.UNSUBSCRIBE: handle_unsubscribe,
+        CommandType.PUBLISH: handle_publish,
+        CommandType.PING: handle_ping_inside_subscription,
+    }
+)

@@ -20,13 +20,13 @@ async def handle_multi(
 
 
 async def handle_multi_inside_transaction(
-    command: Command, redis_state: RedisState, connection: Connection
+    args: list[str], redis_state: RedisState, connection: Connection
 ) -> RESPType[Any]:
     """Handle MULTI command inside transaction"""
     return Error("ERR MULTI inside MULTI")
 
 
-async def handle_queued(
+async def handle_command_queued(
     command: Command, redis_state: RedisState, connection: Connection
 ) -> RESPType[Any]:
     """Default handler inside transaction"""
