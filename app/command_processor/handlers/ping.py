@@ -24,4 +24,4 @@ async def handle_ping_inside_subscription(
     """Handle PING command inside subcsribed mode"""
     if args:
         return Error("PING command should not have arguments")
-    return Array([BulkString("PONG"), BulkString("")])
+    return Array([BulkString("pong"), BulkString("")])
