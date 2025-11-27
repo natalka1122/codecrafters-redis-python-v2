@@ -22,5 +22,5 @@ async def handle_publish(  # noqa: WPS210
     subs = redis_state.pubsub.get_by_pub(pub)
     result = len(subs)
     for sub in subs:
-        asyncio.create_task(sub.write(message_bytes))  # TODO
+        asyncio.create_task(sub.write(message_bytes))  # Fire and forget
     return Integer(result)
