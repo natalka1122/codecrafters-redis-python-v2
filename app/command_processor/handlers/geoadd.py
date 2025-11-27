@@ -7,6 +7,11 @@ from app.resp.base import RESPType
 from app.resp.error import Error
 from app.resp.integer import Integer
 
+MIN_LONGITUDE = -180
+MAX_LONGITUDE = 180
+MIN_LATITUDE = -85.05112878
+MAX_LATITUDE = 85.05112878
+
 
 async def handle_geoadd(
     args: list[str], redis_state: RedisState, connection: Connection
@@ -26,5 +31,17 @@ async def handle_geoadd(
         return Error("WRONGTYPE Operation against a key holding the wrong kind of value")
 
 
-def _geo_validate(a: str, b: str) -> int:
+def _geo_validate(longitude_str: str, latitude_str: str) -> int:  # noqa: WPS238
+    try:
+        longitude = float(longitude_str)
+    except ValueError:
+        raise InvalidGeoError
+    if longitude < MIN_LONGITUDE or longitude > MAX_LONGITUDE:
+        raise InvalidGeoError
+    try:
+        latitude = float(latitude_str)
+    except ValueError:
+        raise InvalidGeoError
+    if latitude < MIN_LATITUDE or latitude > MAX_LATITUDE:
+        raise InvalidGeoError
     return 0
