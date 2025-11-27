@@ -229,3 +229,11 @@ class Storage:  # noqa: WPS214
         if not isinstance(value, SortedSet):
             raise ItemWrongTypeError
         return value.zrank(member)
+
+    def zrange(self, key: str, start: int, stop: int) -> list[str]:
+        if key not in self._item:
+            return []
+        value = self._item[key]
+        if not isinstance(value, SortedSet):
+            raise ItemWrongTypeError
+        return value.zrange(start, stop)
