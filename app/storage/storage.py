@@ -7,6 +7,7 @@ from app.exceptions import (
     ItemNotFoundError,
     ItemWrongTypeError,
     NoDataError,
+    NoKeyError,
 )
 from app.resp.array import Array
 from app.resp.bulk_string import BulkString
@@ -248,7 +249,7 @@ class Storage:  # noqa: WPS214
 
     def zscore(self, key: str, member: str) -> float:
         if key not in self._item:
-            return 0
+            raise NoKeyError
         value = self._item[key]
         if not isinstance(value, SortedSet):
             raise ItemWrongTypeError

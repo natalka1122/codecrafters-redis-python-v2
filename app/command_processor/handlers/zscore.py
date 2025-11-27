@@ -1,7 +1,7 @@
 from typing import Any
 
 from app.connection.connection import Connection
-from app.exceptions import ItemWrongTypeError, NoDataError
+from app.exceptions import ItemWrongTypeError, NoDataError, NoKeyError
 from app.redis_state import RedisState
 from app.resp.base import RESPType
 from app.resp.bulk_string import BulkString, NullBulkString
@@ -20,5 +20,7 @@ async def handle_zscore(
         return BulkString(str(redis_state.redis_variables.zscore(key, member)))
     except NoDataError:
         return NullBulkString("")
+    except NoKeyError:
+        return BulkString("0")
     except ItemWrongTypeError:
         return Error("WRONGTYPE Operation against a key holding the wrong kind of value")

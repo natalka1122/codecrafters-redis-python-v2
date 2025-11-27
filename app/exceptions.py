@@ -53,3 +53,6 @@ class ItemExpiredError(Exception):
 
 class InvalidGeoError(Exception):
     """InvalidGeoError"""
+
+class NoKeyError(Exception):
+    """NoKeyError"""
