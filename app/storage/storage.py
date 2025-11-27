@@ -237,3 +237,27 @@ class Storage:  # noqa: WPS214
         if not isinstance(value, SortedSet):
             raise ItemWrongTypeError
         return value.zrange(start, stop)
+
+    def zcard(self, key: str) -> int:
+        if key not in self._item:
+            return 0
+        value = self._item[key]
+        if not isinstance(value, SortedSet):
+            raise ItemWrongTypeError
+        return value.zcard()
+
+    def zscore(self, key: str, member: str) -> float:
+        if key not in self._item:
+            return 0
+        value = self._item[key]
+        if not isinstance(value, SortedSet):
+            raise ItemWrongTypeError
+        return value.zscore(member)
+
+    def zrem(self, key: str, member: str) -> int:
+        if key not in self._item:
+            return 0
+        value = self._item[key]
+        if not isinstance(value, SortedSet):
+            raise ItemWrongTypeError
+        return value.zrem(member)

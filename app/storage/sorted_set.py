@@ -32,3 +32,18 @@ class SortedSet:
             if stop < 0:
                 stop = -1
         return self._item_list[start : stop + 1]
+
+    def zcard(self) -> int:
+        return len(self._item_list)
+
+    def zscore(self, member: str) -> float:
+        value = self._item_dict.get(member)
+        if value is None:
+            raise NoDataError
+        return self._item_dict[member]
+
+    def zrem(self, member: str) -> int:
+        result = self._item_dict.pop(member, None)
+        if result is None:
+            return 0
+        return 1
