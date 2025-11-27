@@ -8,7 +8,7 @@ from app.pubsub import PubSub
 from app.rdb.binary_io import read_from_file
 from app.redis_config import RedisConfig
 from app.storage.storage import Storage
-from app.user import User
+from app.user import Flags, User
 
 logger = get_logger(__name__)
 
@@ -33,7 +33,7 @@ class RedisState:  # noqa: WPS230
                 dir_name=self.redis_config.dir, dbfilename=self.redis_config.dbfilename, loop=loop
             )
         )
-        self.users: dict[str, User] = {DEFAULT_USERNAME: User()}
+        self.users: dict[str, User] = {DEFAULT_USERNAME: User(flags={Flags.NOPASS})}
 
     @property
     def is_master(self) -> bool:

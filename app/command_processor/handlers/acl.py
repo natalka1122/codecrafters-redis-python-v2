@@ -24,11 +24,14 @@ async def handle_acl_getuser(
     if len(args) != 1:
         return Error(f"ACL GETUSER command should have one argument. args = {args}")
     username = args[0]
-    try:
+    try:  # noqa: WPS229
         flags = [BulkString(x) for x in redis_state.users[username].flags]
+        passwords = [BulkString(x) for x in redis_state.users[username].passwords]
     except KeyError:
         return NullBulkString("")
-    return Array([BulkString("flags"), Array(flags)])
+    return Array(  # noqa: WPS221
+        [BulkString("flags"), Array(flags), BulkString("passwords"), Array(passwords)]
+    )
 
 
 async def handle_acl_setuser(
