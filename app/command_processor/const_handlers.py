@@ -10,6 +10,10 @@ from app.command_processor.handlers.discard import (
 )
 from app.command_processor.handlers.echo import handle_echo
 from app.command_processor.handlers.exec import handle_exec, handle_exec_no_multi
+from app.command_processor.handlers.geoadd import handle_geoadd
+from app.command_processor.handlers.geodist import handle_geodist
+from app.command_processor.handlers.geopos import handle_geopos
+from app.command_processor.handlers.geosearch import handle_geosearch
 from app.command_processor.handlers.get import handle_get
 from app.command_processor.handlers.incr import handle_incr
 from app.command_processor.handlers.info import handle_info_replication
@@ -100,6 +104,10 @@ DEFAULT_HANDLERS: Mapping[CommandType, ArgsHandler] = MappingProxyType(
         CommandType.ZCARD: handle_zcard,
         CommandType.ZSCORE: handle_zscore,
         CommandType.ZREM: handle_zrem,
+        CommandType.GEOADD: handle_geoadd,
+        CommandType.GEOPOS: handle_geopos,
+        CommandType.GEODIST: handle_geodist,
+        CommandType.GEOSEARCH: handle_geosearch,
     }
 )
 

@@ -40,6 +40,10 @@ class CommandType(StrEnum):
     ZCARD = "ZCARD"
     ZSCORE = "ZSCORE"
     ZREM = "ZREM"
+    GEOADD = "GEOADD"
+    GEOPOS = "GEOPOS"
+    GEODIST = "GEODIST"
+    GEOSEARCH = "GEOSEARCH"
 
 
 SHOULD_REPLICATE = set(

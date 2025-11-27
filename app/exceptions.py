@@ -49,3 +49,7 @@ class BadDBFormatError(Exception):
 
 class ItemExpiredError(Exception):
     """ItemExpired"""
+
+
+class InvalidGeoError(Exception):
+    """InvalidGeoError"""
